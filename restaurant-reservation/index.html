@@ -900,6 +900,10 @@
     function updateAllTimers() {
       const now = Date.now();
       let mapChanged = false;
+      // DEBUG: log every 10 seconds that timer is running
+      if (!window._timerDebug) window._timerDebug = 0;
+      window._timerDebug++;
+      if (window._timerDebug % 10 === 1) console.log('[TIMER] tick', window._timerDebug, 'walkins:', walkins.length, 'tables[0].status:', tables[0]?.status);
 
       // Walk-in expiry check (every second, not just every 60s)
       walkins.forEach(w => {
@@ -908,6 +912,7 @@
           const table = tables.find(t => t.id === w.tableId);
           if (table && table.status !== 'expired') {
             table.status = 'expired';
+            console.log('[EXPIRY] table', table.id, 'marked expired! walkinId:', w.id);
             mapChanged = true;
           }
         }
