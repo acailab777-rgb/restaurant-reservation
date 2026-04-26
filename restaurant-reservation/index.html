@@ -426,8 +426,7 @@
   </div>
 
   <div class="tabs">
-    <button class="tab active" data-tab="today" onclick="switchTab('today')">今日訂位</button>
-    <button class="tab" data-tab="seats" onclick="switchTab('seats')">座位圖</button>
+    <button class="tab active" data-tab="seats" onclick="switchTab('seats')">首頁</button>
     <button class="tab" data-tab="all" onclick="switchTab('all')">所有記錄</button>
     <button class="tab" data-tab="deploy" onclick="switchTab('deploy')">座位圖部署</button>
   </div>
@@ -440,18 +439,18 @@
       <div class="stat"><div class="stat-value" id="statAvailable">0</div><div class="stat-label">空桌</div></div>
     </div>
 
-    <!-- Today Tab -->
-    <div id="tab-today" class="tab-content">
-      <div class="time-slots" id="timeSlots"></div>
-      <div id="todayReservations"></div>
-    </div>
-
-    <!-- Seats Tab -->
-    <div id="tab-seats" class="tab-content" style="display:none">
+    <!-- Seats / Home Tab -->
+    <div id="tab-seats" class="tab-content">
       <div class="walkin-btn-area">
         <button class="btn btn-success" onclick="openWalkinModal()">🍽️ 現場候位</button>
       </div>
       <div id="seatMap" class="seat-map"></div>
+      <div class="card" style="margin-top:1.5rem">
+        <div class="card-header">
+          <span class="card-title">📋 所有訂位記錄</span>
+        </div>
+        <div id="homeAllReservations"></div>
+      </div>
     </div>
 
     <!-- All Tab -->
@@ -637,7 +636,7 @@
     let selectedTable = null;
     let selectedWalkinTable = null;
     let selectedTags = [];
-    let currentTab = 'today';
+    let currentTab = 'seats';
 
     // Deployment pending changes
     let pendingTables = null; // null = no pending changes
@@ -789,7 +788,7 @@
           saveReservations();
           saveTables();
           saveWalkins();
-          renderReservations();
+          renderHomeAllReservations();
           renderSeatMap();
           updateStats();
           renderTableSelect();
@@ -824,11 +823,9 @@
       document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
       document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
       document.getElementById(`tab-${tab}`).style.display = 'block';
-      if (tab === 'today') {
-        renderTimeSlots();
-        renderReservations();
-      } else if (tab === 'seats') {
+      if (tab === 'seats') {
         renderSeatMap();
+        renderHomeAllReservations();
       } else if (tab === 'all') {
         renderAllReservations();
       } else if (tab === 'deploy') {
@@ -837,18 +834,17 @@
     }
 
     // ========== TIME SLOTS ==========
-    function renderTimeSlots() {
-      const today = getTodayStr();
-      const container = document.getElementById('timeSlots');
-      container.innerHTML = ALL_TIMES.map(t => {
-        const hasBooking = reservations.some(r =>
-          r.date === today &&
-          r.time === t &&
-          r.status !== 'cancelled' &&
-          r.status !== 'noshow'
+    function renderHomeAllReservations() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      let filtered = [...reservations].sort((a, b) => new Date(b.date) - new Date(a.date) || b.time.localeCompare(a.time));
+      if (search) {
+        filtered = filtered.filter(r =>
+          r.name.toLowerCase().includes(search) ||
+          (r.phone && r.phone.includes(search)) ||
+          (r.notes && r.notes.toLowerCase().includes(search))
         );
-        return `<button class="time-slot ${hasBooking ? 'has-booking' : ''}" onclick="filterByTime('${t}')">${t}</button>`;
-      }).join('');
+      }
+      renderReservationList(filtered, 'homeAllReservations');
     }
     function filterByTime(time) {
       const searchInput = document.getElementById('searchInput');
@@ -1177,6 +1173,24 @@
       const date = document.getElementById('resDate').value;
       const time = document.getElementById('resTime').value;
       if (!name || !date || !time) { showToast('請填寫必填欄位'); return; }
+
+      // Overlap check: 2-hour dining window on same table
+      if (selectedTable) {
+        const newStart = timeToMinutes(time);
+        const newEnd = newStart + 120; // 2 hours
+        const overlap = reservations.some(r =>
+          r.id !== document.getElementById('resId').value &&
+          r.tableId === selectedTable &&
+          r.date === date &&
+          r.status !== 'cancelled' &&
+          r.status !== 'noshow' &&
+          !isTimeOverlap(newStart, newEnd, timeToMinutes(r.time), timeToMinutes(r.time) + 120)
+        );
+        if (overlap) {
+          alert('此桌在該時段已有訂位');
+          return;
+        }
+      }
       const id = document.getElementById('resId').value || generateId();
       const existing = reservations.find(r => r.id === id);
       const oldTableId = existing ? existing.tableId : null;
@@ -1237,6 +1251,7 @@
       renderTimeSlots();
       renderSeatMap();
       renderReservations();
+      renderHomeAllReservations();
       renderTableSelect();
       updateStats();
       showToast(existing ? '已更新訂位' : '已新增訂位');
@@ -1255,6 +1270,7 @@
       renderTimeSlots();
       renderSeatMap();
       renderReservations();
+      renderHomeAllReservations();
       updateStats();
       showToast('已刪除訂位');
     }
@@ -1279,9 +1295,9 @@
       availableTable.status = 'in-use';
       saveReservations();
       saveTables();
-      renderTimeSlots();
       renderSeatMap();
       renderReservations();
+      renderHomeAllReservations();
       updateStats();
       showToast(`${res.name} 已入座 ${availableTable.name}`);
     }
@@ -1296,9 +1312,9 @@
       res.tableId = null;
       saveReservations();
       saveTables();
-      renderTimeSlots();
       renderSeatMap();
       renderReservations();
+      renderHomeAllReservations();
       updateStats();
       showToast('已完成用餐');
     }
@@ -1332,11 +1348,11 @@
 
     // ========== FILTER ==========
     function filterReservations() {
-      // Clear time filter if search text changes
       if (!document.getElementById('searchInput').dataset.filterTime) {
         // intentional
       }
       if (currentTab === 'all') renderAllReservations();
+      else if (currentTab === 'seats') renderHomeAllReservations();
       else renderReservations();
     }
     // Handle time slot clear
@@ -1502,6 +1518,13 @@
     }
 
     // ========== UTILS ==========
+    function timeToMinutes(t) {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    }
+    function isTimeOverlap(start1, end1, start2, end2) {
+      return start1 < end2 && end1 > start2;
+    }
     function generateId() {
       return 'RES' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
     }
