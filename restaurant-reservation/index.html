@@ -796,9 +796,9 @@
         if (currentTab === 'today') updateStats();
       }, 60000);
 
-      // Check every second for timer display
+      // Check every second for timer display — always run to keep countdown clocks live
       setInterval(() => {
-        if (currentTab === 'seats') renderSeatMap();
+        updateAllTimers();
       }, 1000);
 
       // Check daily clear
@@ -817,12 +817,22 @@
           const noshowThreshold = resDateTime + 15 * 60 * 1000; // 15 min after
           if (now >= noshowThreshold) {
             res.status = 'noshow';
+            // Release the table so it becomes available for walk-ins and new reservations
+            if (res.tableId) {
+              const table = tables.find(t => t.id === res.tableId);
+              if (table) {
+                table.reservationId = null;
+                table.status = 'empty';
+              }
+              res.tableId = null;
+            }
             changed = true;
           }
         }
       });
       if (changed) {
         saveReservations();
+        saveTables();
       }
       return changed;
     }
@@ -887,6 +897,38 @@
       const hrs = Math.floor(mins / 60);
       const m = mins % 60;
       return hrs > 0 ? `${hrs}:${String(m).padStart(2, '0')}` : `${m}:${String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0')}`;
+    }
+
+    function updateAllTimers() {
+      // Update walk-in timer displays in seat map
+      document.querySelectorAll('.timer').forEach(el => {
+        const seatEl = el.closest('.seat');
+        if (!seatEl) return;
+        const tableId = seatEl.getAttribute('data-table-id');
+        if (!tableId) return;
+        const walkin = walkins.find(w => w.tableId === tableId);
+        if (walkin) {
+          el.textContent = '⏱️' + getWalkinRemaining(walkin);
+        }
+      });
+      // Update seated duration in reservation list items
+      document.querySelectorAll('.seated-duration').forEach(el => {
+        const resId = el.getAttribute('data-res-id');
+        if (!resId) return;
+        const res = reservations.find(r => r.id === resId);
+        if (res && res.seatedAt) {
+          el.textContent = '⏱️ 已坐 ' + getSeatedDuration(res.seatedAt);
+        }
+      });
+      // Update walk-in waiting time in walkin list
+      document.querySelectorAll('.walkin-waiting').forEach(el => {
+        const walkinId = el.getAttribute('data-walkin-id');
+        if (!walkinId) return;
+        const w = walkins.find(w => w.id === walkinId);
+        if (w) {
+          el.textContent = '等待 ' + getWalkinRemaining(w) + ' | ';
+        }
+      });
     }
 
     // ========== EXPORT / IMPORT ==========
@@ -1054,7 +1096,7 @@
                 📅 ${r.date} ${r.time}｜👥 ${r.guests}人
                 ${table ? `｜${table.name}` : ''}
                 ${r.phone ? `｜📞 ${r.phone}` : ''}
-                ${seatedDuration ? `｜⏱️ 已坐 ${seatedDuration}` : ''}
+                ${seatedDuration ? `<span class="seated-duration" data-res-id="${r.id}">｜⏱️ 已坐 ${seatedDuration}</span>` : ''}
               </div>
               ${r.notes ? `<div class="details">💬 ${escapeHtml(r.notes)}</div>` : ''}
             </div>
@@ -1094,7 +1136,7 @@
                 📅 ${r.date} ${r.time}｜👥 ${r.guests}人
                 ${table ? `｜${table.name}` : ''}
                 ${r.phone ? `｜📞 ${r.phone}` : ''}
-                ${seatedDuration ? `｜⏱️ 已坐 ${seatedDuration}` : ''}
+                ${seatedDuration ? `<span class="seated-duration" data-res-id="${r.id}">｜⏱️ 已坐 ${seatedDuration}</span>` : ''}
               </div>
               ${r.notes ? `<div class="details">💬 ${escapeHtml(r.notes)}</div>` : ''}
             </div>
@@ -1151,7 +1193,7 @@
         const timerDisplay = walkin ? getWalkinRemaining(walkin) : (seatedRes && seatedRes.seatedAt ? getSeatedDuration(seatedRes.seatedAt) : '');
 
         return `
-          <div class="seat ${status} ${selectedTable === t.id ? 'selected' : ''}" onclick="selectSeat('${t.id}')">
+          <div class="seat ${status} ${selectedTable === t.id ? 'selected' : ''}" onclick="selectSeat('${t.id}')" data-table-id="${t.id}">
             <div class="name">${t.name}</div>
             <div class="capacity">${t.capacity}人</div>
             ${status === 'in-use' ? `
@@ -1433,7 +1475,7 @@
           <div class="res-item" style="border-left-color:var(--warning)">
             <div class="info">
               <div class="name">${escapeHtml(w.name)} <span style="font-size:0.75rem;color:var(--text-light)">${w.guests}人</span></div>
-              <div class="details">⏱️ 已等待 ${waitedStr}</div>
+              <div class="details"><span class="walkin-waiting" data-walkin-id="${w.id}">⏱️ 已等待 ${waitedStr}</span></div>
               ${w.notes ? `<div class="details" style="font-size:0.8rem">💬 ${escapeHtml(w.notes)}</div>` : ''}
             </div>
             <div class="actions">
