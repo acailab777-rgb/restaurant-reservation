@@ -843,15 +843,15 @@
       walkins = walkins.filter(w => {
         const expiry = w.seatedAt + (119 * 60 * 1000); // 1hr 59min
         if (now >= expiry) {
-          // Mark table as expired (not empty — needs manual release)
+          // Mark table as expired — keep walkin object and table assignment
           const table = tables.find(t => t.id === w.tableId);
           if (table) {
             table.status = 'expired';
-            table.walkinId = null;
-            table.reservationId = null;
+            // Do NOT clear walkinId/reservationId — keep for display
           }
+          // Keep walkin in list (don't return false)
           changed = true;
-          return false; // remove walkin
+          return true;
         }
         return true;
       });
@@ -873,11 +873,9 @@
             const table = tables.find(t => t.id === res.tableId);
             if (table) {
               table.status = 'expired';
-              table.reservationId = null;
-              table.walkinId = null;
+              // Do NOT clear reservationId/walkinId — keep for display
             }
-            res.tableId = null;
-            res.status = 'completed';
+            // Do NOT set status to completed or clear tableId — keep as 'seated' but expired
             changed = true;
           }
         }
@@ -1217,21 +1215,40 @@
       const walkin = walkins.find(w => w.tableId === id);
       const seatedRes = reservations.find(r => r.id === table.reservationId && r.status === 'seated');
 
-      // Find nearest upcoming reservation for this table
-      const now = new Date();
-      const upcomingForTable = reservations
-        .filter(r => r.tableId === id && r.status === 'confirmed' && new Date(`${r.date}T${r.time}`) > now)
-        .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
-      const nearestUpcoming = upcomingForTable[0] || null;
+      // Find all reservations for this table, sorted: noshow first, then confirmed, seated, then completed/cancelled
+      const now = Date.now();
+      const allForTable = reservations
+        .filter(r => r.tableId === id)
+        .sort((a, b) => {
+          const order = { noshow: 0, confirmed: 1, seated: 2, completed: 3, cancelled: 4 };
+          return (order[a.status] ?? 5) - (order[b.status] ?? 5);
+        });
+
+      const nearestUpcoming = allForTable.find(r => r.status === 'confirmed' && new Date(`${r.date}T${r.time}`) > now) || null;
+      const noshowRes = allForTable.find(r => r.status === 'noshow') || null;
+      const seatedRes = reservations.find(r => r.id === table.reservationId && r.status === 'seated') || null;
 
       let content = `
         <p><strong>人數：</strong>${table.capacity}人</p>
         <p><strong>狀態：</strong>${
           status === 'empty' ? '空桌 🟢' :
           status === 'in-use' ? '使用中 🔴' :
-          status === 'expired' ? '已過期（待釋放）⚪' :
+          status === 'expired' ? '超時 ⏰' :
           '已訂位 🟡'
         }</p>
+        ${status === 'expired' && seatedRes ? `
+          <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
+          <p><strong>超時顧客（已屆用餐時間）</strong></p>
+          <p><strong>姓名：</strong>${escapeHtml(seatedRes.name)}</p>
+          <p><strong>電話：</strong>${seatedRes.phone || '-'}</p>
+          <p><strong>人數：</strong>${seatedRes.guests}人</p>
+        ` : ''}
+        ${status === 'expired' && walkin ? `
+          <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
+          <p><strong>超時顧客（現場候位）</strong></p>
+          <p><strong>姓名：</strong>${escapeHtml(walkin.name)}</p>
+          <p><strong>人數：</strong>${walkin.guests}人</p>
+        ` : ''}
         ${status === 'in-use' && walkin ? `
           <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
           <p><strong>現場候位</strong></p>
@@ -1241,13 +1258,23 @@
           <p><strong>剩餘時間：</strong><span style="color:var(--accent);font-weight:700">${getWalkinRemaining(walkin)}</span></p>
           ${walkin.notes ? `<p><strong>備註：</strong>${escapeHtml(walkin.notes)}</p>` : ''}
         ` : ''}
-        ${seatedRes ? `
+        ${seatedRes && status !== 'expired' ? `
           <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
           <p><strong>訂位人：</strong>${escapeHtml(seatedRes.name)}</p>
           <p><strong>電話：</strong>${seatedRes.phone || '-'}</p>
           <p><strong>人數：</strong>${seatedRes.guests}人</p>
           <p><strong>時間：</strong>${seatedRes.date} ${seatedRes.time}</p>
           ${seatedRes.notes ? `<p><strong>備註：</strong>${escapeHtml(seatedRes.notes)}</p>` : ''}
+        ` : ''}
+        ${noshowRes ? `
+          <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
+          <p><strong>⚠️ 未到記錄（已過期）</strong></p>
+          <p><strong>姓名：</strong>${escapeHtml(noshowRes.name)}</p>
+          <p><strong>電話：</strong>${noshowRes.phone || '-'}</p>
+          <p><strong>日期：</strong>${noshowRes.date}</p>
+          <p><strong>時間：</strong>${noshowRes.time}</p>
+          <p><strong>人數：</strong>${noshowRes.guests}人</p>
+          <p><strong>狀態：</strong><span class="status-badge noshow">未到</span></p>
         ` : ''}
         ${nearestUpcoming ? `
           <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
