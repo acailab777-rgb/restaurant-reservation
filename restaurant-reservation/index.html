@@ -898,6 +898,40 @@
     }
 
     function updateAllTimers() {
+      const now = Date.now();
+      let mapChanged = false;
+
+      // Walk-in expiry check (every second, not just every 60s)
+      walkins.forEach(w => {
+        const expiry = w.seatedAt + (119 * 60 * 1000);
+        if (now >= expiry) {
+          const table = tables.find(t => t.id === w.tableId);
+          if (table && table.status !== 'expired') {
+            table.status = 'expired';
+            mapChanged = true;
+          }
+        }
+      });
+
+      // Seated reservation expiry check (every second)
+      reservations.forEach(res => {
+        if (res.status === 'seated' && res.seatedAt) {
+          const expiry = new Date(res.seatedAt).getTime() + (119 * 60 * 1000);
+          if (now >= expiry) {
+            const table = tables.find(t => t.id === res.tableId);
+            if (table && table.status !== 'expired') {
+              table.status = 'expired';
+              mapChanged = true;
+            }
+          }
+        }
+      });
+
+      if (mapChanged) {
+        saveTables();
+        renderSeatMap();
+      }
+
       // Update walk-in timer displays in seat map
       document.querySelectorAll('.timer').forEach(el => {
         const seatEl = el.closest('.seat');
@@ -1198,7 +1232,7 @@
               <div class="time-info">👤${escapeHtml(displayName)}</div>
               <div class="timer">⏱️${timerDisplay}</div>
             ` : ''}
-            ${status === 'expired' ? `<div class="time-info">⏰已過期</div>` : ''}
+            ${status === 'expired' ? `<div class="time-info">⏰時間已到</div>` : ''}
             ${status === 'reserved-soon' ? `<div class="time-info">🔔已訂位</div>` : ''}
           </div>
         `;
