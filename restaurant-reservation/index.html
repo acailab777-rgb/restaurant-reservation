@@ -651,6 +651,12 @@
         <label>備註</label>
         <textarea id="walkinNotes" rows="2" placeholder="如：想要靠窗位置"></textarea>
       </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;color:var(--accent)">
+          <input type="checkbox" id="walkinTestMode" style="width:1rem;height:1rem">
+          🔧 測試模式（60秒後過期）
+        </label>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-outline" onclick="closeWalkinModal()">取消</button>
         <button class="btn btn-secondary" id="walkinWaitlistBtn" onclick="addToWaitlist()">加入候位清單</button>
@@ -1480,13 +1486,18 @@
       if (!table) return;
 
       let seatWalkin = null;
+      const testMode = document.getElementById('walkinTestMode')?.checked;
+      const seatedTime = testMode
+        ? Date.now() - (119 * 60 * 1000) + 60000  // 60s from now = 60s remaining
+        : Date.now();
+
       // Check if seating from waitlist (currentSeatWalkinId set by openSeatWalkinModal)
       if (window.currentSeatWalkinId) {
         seatWalkin = walkins.find(w => w.id === window.currentSeatWalkinId);
         if (seatWalkin) {
           seatWalkin.status = 'seated';
           seatWalkin.tableId = table.id;
-          seatWalkin.seatedAt = Date.now();
+          seatWalkin.seatedAt = seatedTime;
           saveWalkins();
         }
         window.currentSeatWalkinId = null;
@@ -1497,7 +1508,7 @@
           name,
           guests,
           tableId: table.id,
-          seatedAt: Date.now(),
+          seatedAt: seatedTime,
           notes,
           reservationId: null,
           status: 'seated'
@@ -1517,7 +1528,9 @@
       renderWalkinList();
       renderHomeAllReservations();
       updateStats();
-      showToast(`${name} 已入座 ${table.name}，1小時59分後自動釋放`);
+      showToast(testMode
+        ? `${name} 已入座 ${table.name}，🔧測試模式：60秒後過期`
+        : `${name} 已入座 ${table.name}，1小時59分後自動釋放`);
     }
 
     function renderWalkinList() {
