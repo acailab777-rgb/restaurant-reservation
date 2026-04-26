@@ -450,13 +450,13 @@
       <div style="display:grid;grid-template-columns:300px 1fr;gap:1rem;margin-top:1.5rem" class="home-bottom-grid">
         <div class="card">
           <div class="card-header">
-            <span class="card-title">⏳ 現場候位清單</span>
+            <span class="card-title">⏳ 現場面候位</span>
           </div>
           <div id="walkinList"></div>
         </div>
         <div class="card">
           <div class="card-header">
-            <span class="card-title">📋 所有訂位記錄</span>
+            <span class="card-title">📋 訂位清單</span>
           </div>
           <div id="homeAllReservations"></div>
         </div>
@@ -587,7 +587,7 @@
   <!-- Walk-in Modal -->
   <div class="modal-overlay" id="walkinModal">
     <div class="modal">
-      <h2>🍽️ 現場候位</h2>
+      <h2 id="walkinModalTitle">🍽️ 現場候位</h2>
       <div class="form-group">
         <label>姓名 *</label>
         <input type="text" id="walkinName" required>
@@ -617,7 +617,24 @@
       </div>
       <div class="modal-actions">
         <button class="btn btn-outline" onclick="closeWalkinModal()">取消</button>
-        <button class="btn btn-secondary" onclick="addToWaitlist()">加入候位清單</button>
+        <button class="btn btn-secondary" id="walkinWaitlistBtn" onclick="addToWaitlist()">加入候位清單</button>
+        <button class="btn btn-success" id="walkinConfirmBtn" onclick="confirmWalkin()">確認入座</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seat Walkin Modal (table selection for waitlist walkin) -->
+  <div class="modal-overlay" id="seatWalkinModal">
+    <div class="modal">
+      <h2>🍽️ 選擇桌位</h2>
+      <input type="hidden" id="seatWalkinId">
+      <p id="seatWalkinInfo" style="margin-bottom:1rem;font-weight:600"></p>
+      <div class="form-group">
+        <label>選擇空桌</label>
+        <div class="walkin-table-grid" id="seatWalkinTableGrid"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeSeatWalkinModal()">取消</button>
         <button class="btn btn-success" onclick="confirmWalkin()">確認入座</button>
       </div>
     </div>
@@ -879,7 +896,9 @@
     // ========== TIME SLOTS ==========
     function renderHomeAllReservations() {
       const search = document.getElementById('searchInput').value.toLowerCase();
-      let filtered = [...reservations].sort((a, b) => new Date(b.date) - new Date(a.date) || b.time.localeCompare(a.time));
+      let filtered = [...reservations]
+        .filter(r => r.status !== 'completed' && r.status !== 'seated')
+        .sort((a, b) => new Date(b.date) - new Date(a.date) || b.time.localeCompare(a.time));
       if (search) {
         filtered = filtered.filter(r =>
           r.name.toLowerCase().includes(search) ||
@@ -917,14 +936,69 @@
     function renderAllReservations() {
       const search = document.getElementById('searchInput').value.toLowerCase();
       let filtered = [...reservations].sort((a, b) => new Date(b.date) - new Date(a.date) || b.time.localeCompare(a.time));
+
+      // Merge walkins into the all list
+      const walkinItems = walkins.map(w => ({
+        id: w.id,
+        name: w.name + '（現場候位）',
+        date: new Date(w.seatedAt).toLocaleDateString('zh-TW'),
+        time: new Date(w.seatedAt).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+        guests: w.guests,
+        tableId: w.tableId,
+        status: w.status,
+        tags: [],
+        notes: w.notes,
+        isWalkin: true,
+        seatedAt: w.seatedAt
+      }));
+
+      const allItems = [...filtered, ...walkinItems].sort((a, b) => new Date(b.date) - new Date(a.date) || b.time.localeCompare(a.time));
+
       if (search) {
-        filtered = filtered.filter(r =>
+        const filteredItems = allItems.filter(r =>
           r.name.toLowerCase().includes(search) ||
           (r.phone && r.phone.includes(search)) ||
           (r.notes && r.notes.toLowerCase().includes(search))
         );
+        renderAllItemsList(filteredItems, 'allReservations');
+      } else {
+        renderAllItemsList(allItems, 'allReservations');
       }
-      renderReservationList(filtered, 'allReservations');
+    }
+    function renderAllItemsList(list, containerId) {
+      const container = document.getElementById(containerId);
+      if (list.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="emoji">📋</div><p>目前沒有記錄</p></div>`;
+        return;
+      }
+      container.innerHTML = list.map(r => {
+        const table = tables.find(t => t.id === r.tableId);
+        const seatedDuration = r.seatedAt ? getSeatedDuration(r.seatedAt) : '';
+        const isWalkin = r.isWalkin;
+        const isWalkinSeated = isWalkin && r.status === 'seated';
+        return `
+          <div class="res-item status-${r.status}">
+            <div class="info">
+              <div class="name">
+                ${escapeHtml(r.name)}
+                ${isWalkin ? '<span class="tag" style="background:var(--success)">現場候位</span>' : ''}
+                ${r.tags.map(tag => `<span class="tag ${tag}">${getTagLabel(tag)}</span>`).join('')}
+                <span class="status-badge ${r.status}">${getStatusLabel(r.status)}</span>
+              </div>
+              <div class="details">
+                📅 ${r.date} ${r.time}｜👥 ${r.guests}人
+                ${table ? `｜${table.name}` : ''}
+                ${r.phone ? `｜📞 ${r.phone}` : ''}
+                ${seatedDuration ? `｜⏱️ 已坐 ${seatedDuration}` : ''}
+              </div>
+              ${r.notes ? `<div class="details">💬 ${escapeHtml(r.notes)}</div>` : ''}
+            </div>
+            <div class="actions">
+              ${isWalkin ? `<button class="btn btn-sm btn-danger" onclick="removeWalkin('${r.id}')" style="color:var(--accent)">移除</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
     }
     function renderReservationList(list, containerId) {
       const container = document.getElementById(containerId);
@@ -1113,31 +1187,58 @@
 
     // ========== WALK-IN ==========
     function openWalkinModal() {
+      window.currentSeatWalkinId = null;
       selectedWalkinTable = null;
       document.getElementById('walkinName').value = '';
       document.getElementById('walkinGuests').value = '2';
       document.getElementById('walkinNotes').value = '';
+      document.getElementById('walkinModalTitle').textContent = '🍽️ 現場候位';
+      document.getElementById('walkinWaitlistBtn').style.display = '';
+      document.getElementById('walkinConfirmBtn').style.display = '';
       renderWalkinTableGrid();
       document.getElementById('walkinModal').classList.add('active');
     }
     function closeWalkinModal() {
       document.getElementById('walkinModal').classList.remove('active');
+      window.currentSeatWalkinId = null;
+      selectedWalkinTable = null;
+    }
+
+    // Open modal to seat a waitlisted walkin
+    function openSeatWalkinModal(walkinId) {
+      const walkin = walkins.find(w => w.id === walkinId);
+      if (!walkin) return;
+      window.currentSeatWalkinId = walkinId;
+      document.getElementById('seatWalkinId').value = walkinId;
+      document.getElementById('seatWalkinInfo').textContent = `${walkin.name}｜${walkin.guests}人`;
+      // Populate walkinModal fields so confirmWalkin() can read them
+      document.getElementById('walkinName').value = walkin.name;
+      document.getElementById('walkinGuests').value = walkin.guests;
+      selectedWalkinTable = null;
+      renderWalkinTableGrid();
+      document.getElementById('seatWalkinModal').classList.add('active');
+    }
+    function closeSeatWalkinModal() {
+      document.getElementById('seatWalkinModal').classList.remove('active');
+      window.currentSeatWalkinId = null;
+      selectedWalkinTable = null;
     }
     function renderWalkinTableGrid() {
       const guests = parseInt(document.getElementById('walkinGuests')?.value) || 2;
       const container = document.getElementById('walkinTableGrid');
+      const container2 = document.getElementById('seatWalkinTableGrid');
       const emptyTables = tables.filter(t => t.status === 'empty' && t.capacity >= guests);
-      if (emptyTables.length === 0) {
-        container.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:1rem">沒有符合條件的空桌</p>';
-        return;
-      }
-      container.innerHTML = emptyTables.map(t => `
-        <button type="button" class="walkin-table-btn ${selectedWalkinTable === t.id ? 'selected' : ''}"
-          onclick="selectWalkinTable('${t.id}')">
-          <div>${t.name}</div>
-          <div class="cap">可容納 ${t.capacity} 人</div>
-        </button>
-      `).join('');
+      const html = emptyTables.length === 0
+        ? '<p style="text-align:center;color:var(--text-light);padding:1rem">沒有符合條件的空桌</p>'
+        : emptyTables.map(t => `
+          <button type="button" class="walkin-table-btn ${selectedWalkinTable === t.id ? 'selected' : ''}"
+            onclick="selectWalkinTable('${t.id}')">
+            <div>${t.name}</div>
+            <div class="cap">可容納 ${t.capacity} 人</div>
+          </button>
+        `).join('');
+      if (container) container.innerHTML = html;
+      if (container2) container2.innerHTML = html;
     }
     function selectWalkinTable(id) {
       selectedWalkinTable = selectedWalkinTable === id ? null : id;
@@ -1152,25 +1253,40 @@
       const table = tables.find(t => t.id === selectedWalkinTable);
       if (!table) return;
 
-      // Create a walkin record
-      const walkin = {
-        id: 'WALK' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
-        name,
-        guests,
-        tableId: table.id,
-        seatedAt: Date.now(),
-        notes,
-        reservationId: null
-      };
-      walkins.push(walkin);
-      saveWalkins();
+      let seatWalkin = null;
+      // Check if seating from waitlist (currentSeatWalkinId set by openSeatWalkinModal)
+      if (window.currentSeatWalkinId) {
+        seatWalkin = walkins.find(w => w.id === window.currentSeatWalkinId);
+        if (seatWalkin) {
+          seatWalkin.status = 'seated';
+          seatWalkin.tableId = table.id;
+          seatWalkin.seatedAt = Date.now();
+          saveWalkins();
+        }
+        window.currentSeatWalkinId = null;
+      } else {
+        // Direct seating (no waitlist) — create a new walkin with seated status
+        seatWalkin = {
+          id: 'WALK' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
+          name,
+          guests,
+          tableId: table.id,
+          seatedAt: Date.now(),
+          notes,
+          reservationId: null,
+          status: 'seated'
+        };
+        walkins.push(seatWalkin);
+        saveWalkins();
+      }
 
       // Update table
       table.status = 'in-use';
-      table.walkinId = walkin.id;
+      table.walkinId = seatWalkin ? seatWalkin.id : null;
       saveTables();
 
       closeWalkinModal();
+      selectedWalkinTable = null;
       renderSeatMap();
       renderWalkinList();
       renderHomeAllReservations();
@@ -1181,8 +1297,10 @@
     function renderWalkinList() {
       const container = document.getElementById('walkinList');
       if (!container) return;
-      // Sort by created time (earliest first)
-      const sorted = [...walkins].sort((a, b) => a.seatedAt - b.seatedAt);
+      // Sort by created time (earliest first), only show non-seated walkins
+      const sorted = [...walkins]
+        .filter(w => w.status !== 'seated')
+        .sort((a, b) => a.seatedAt - b.seatedAt);
       if (sorted.length === 0) {
         container.innerHTML = `<div class="empty-state" style="padding:1rem"><div class="emoji" style="font-size:1.5rem">⏳</div><p style="font-size:0.85rem">目前無現場候位</p></div>`;
         return;
@@ -1200,6 +1318,7 @@
               ${w.notes ? `<div class="details" style="font-size:0.8rem">💬 ${escapeHtml(w.notes)}</div>` : ''}
             </div>
             <div class="actions">
+              <button class="btn btn-sm btn-success" onclick="openSeatWalkinModal('${w.id}')" style="font-size:0.7rem">入座</button>
               <button class="btn btn-sm btn-danger" onclick="removeWalkin('${w.id}')" style="font-size:0.7rem">移除</button>
             </div>
           </div>
@@ -1240,7 +1359,8 @@
         tableId: null, // no table assigned
         seatedAt: Date.now(), // used as queue time
         notes,
-        reservationId: null
+        reservationId: null,
+        status: 'waiting'
       };
       walkins.push(walkin);
       saveWalkins();
