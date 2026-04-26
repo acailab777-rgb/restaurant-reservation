@@ -579,7 +579,43 @@
       <div id="seatDetailContent"></div>
       <div class="modal-actions">
         <button class="btn btn-outline" onclick="closeSeatModal()">關閉</button>
+        <button class="btn btn-outline" id="returnSeatBtn" onclick="returnSeatAssignment()">退回</button>
         <button class="btn btn-warning" id="releaseSeatBtn" onclick="clearSeatAssignment()">釋放座位</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Walkin Edit Modal -->
+  <div class="modal-overlay" id="walkinEditModal">
+    <div class="modal">
+      <h2>編輯現場候位</h2>
+      <input type="hidden" id="editWalkinId">
+      <div class="form-group">
+        <label>姓名 *</label>
+        <input type="text" id="editWalkinName" required>
+      </div>
+      <div class="form-group">
+        <label>人數 *</label>
+        <select id="editWalkinGuests">
+          <option value="1">1人</option>
+          <option value="2">2人</option>
+          <option value="3">3人</option>
+          <option value="4">4人</option>
+          <option value="5">5人</option>
+          <option value="6">6人</option>
+          <option value="7">7人</option>
+          <option value="8">8人</option>
+          <option value="9">9人</option>
+          <option value="10">10人</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <textarea id="editWalkinNotes" rows="2"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeWalkinEditModal()">取消</button>
+        <button class="btn btn-success" onclick="saveWalkinEdit()">儲存</button>
       </div>
     </div>
   </div>
@@ -739,14 +775,16 @@
 
     // ========== TIMERS ==========
     function startTimers() {
-      // Check every minute for walkin and seated-reservation expiry
+      // Check every minute for walkin and seated-reservation expiry + noshow check
       setInterval(() => {
         checkWalkinExpiry();
         checkSeatedReservationExpiry();
+        checkNoshow();
         if (currentTab === 'seats') {
           renderSeatMap();
           renderWalkinList();
         }
+        if (currentTab === 'all') renderAllReservations();
         if (currentTab === 'today') updateStats();
       }, 60000);
 
@@ -759,6 +797,29 @@
       setInterval(() => {
         checkDailyFreshStart();
       }, 60000);
+    }
+
+    // ========== NO-SHOW CHECK ==========
+    function checkNoshow() {
+      const now = Date.now();
+      let changed = false;
+      reservations.forEach(res => {
+        if (res.status === 'confirmed' && res.date && res.time) {
+          const resDateTime = new Date(`${res.date}T${res.time}`).getTime();
+          const noshowThreshold = resDateTime + 15 * 60 * 1000; // 15 min after
+          if (now >= noshowThreshold) {
+            res.status = 'noshow';
+            changed = true;
+          }
+        }
+      });
+      if (changed) {
+        saveReservations();
+        renderReservations();
+        renderHomeAllReservations();
+        renderAllReservations();
+        updateStats();
+      }
     }
 
     function checkWalkinExpiry() {
@@ -975,7 +1036,6 @@
         const table = tables.find(t => t.id === r.tableId);
         const seatedDuration = r.seatedAt ? getSeatedDuration(r.seatedAt) : '';
         const isWalkin = r.isWalkin;
-        const isWalkinSeated = isWalkin && r.status === 'seated';
         return `
           <div class="res-item status-${r.status}">
             <div class="info">
@@ -994,7 +1054,13 @@
               ${r.notes ? `<div class="details">💬 ${escapeHtml(r.notes)}</div>` : ''}
             </div>
             <div class="actions">
-              ${isWalkin ? `<button class="btn btn-sm btn-danger" onclick="removeWalkin('${r.id}')" style="color:var(--accent)">移除</button>` : ''}
+              ${isWalkin ? `
+                <button class="btn btn-sm btn-outline" onclick="openWalkinEditModal('${r.id}')">編輯</button>
+                <button class="btn btn-sm btn-outline" onclick="removeWalkin('${r.id}')" style="color:var(--accent)">移除</button>
+              ` : `
+                <button class="btn btn-sm btn-outline" onclick="editReservation('${r.id}')">編輯</button>
+                <button class="btn btn-sm btn-outline" onclick="deleteReservation('${r.id}')" style="color:var(--accent)">刪除</button>
+              `}
             </div>
           </div>
         `;
@@ -1147,7 +1213,10 @@
         ` : ''}
       `;
       document.getElementById('seatDetailContent').innerHTML = content;
+      const isReservationBacked = !!table.reservationId;
+      const isWalkinBacked = !!table.walkinId;
       document.getElementById('releaseSeatBtn').style.display = (status === 'in-use' || status === 'expired') ? '' : 'none';
+      document.getElementById('returnSeatBtn').style.display = (isReservationBacked || isWalkinBacked) ? '' : 'none';
       document.getElementById('seatModal').classList.add('active');
     }
     function closeSeatModal() { document.getElementById('seatModal').classList.remove('active'); }
@@ -1156,10 +1225,11 @@
       const table = tables.find(t => t.id === id);
       if (!table) return;
 
-      // Release walkin if any
-      const walkinIdx = walkins.findIndex(w => w.tableId === id);
-      if (walkinIdx > -1) {
-        walkins.splice(walkinIdx, 1);
+      // Release walkin if any — mark as 'released' (keep in array)
+      const walkin = walkins.find(w => w.tableId === id);
+      if (walkin) {
+        walkin.status = 'released';
+        walkin.tableId = null;
         saveWalkins();
       }
 
@@ -1181,8 +1251,52 @@
       renderSeatMap();
       renderHomeAllReservations();
       renderWalkinList();
+      renderAllReservations();
       updateStats();
       showToast('已釋放座位');
+    }
+
+    function returnSeatAssignment() {
+      const id = document.getElementById('seatId').value;
+      const table = tables.find(t => t.id === id);
+      if (!table) return;
+
+      if (table.reservationId) {
+        // Return a reservation-backed seat: revert reservation to confirmed
+        const res = reservations.find(r => r.id === table.reservationId);
+        if (res) {
+          res.status = 'confirmed';
+          saveReservations();
+        }
+        table.reservationId = null;
+        table.walkinId = null;
+        table.status = 'empty';
+        saveTables();
+        showToast('已退回訂位狀態');
+      } else if (table.walkinId) {
+        // Return a walkin-backed seat: revert walkin to waiting
+        const walkin = walkins.find(w => w.id === table.walkinId);
+        if (walkin) {
+          walkin.status = 'waiting';
+          walkin.tableId = null;
+          saveWalkins();
+        }
+        table.reservationId = null;
+        table.walkinId = null;
+        table.status = 'empty';
+        saveTables();
+        showToast('已退回候位狀態');
+      } else {
+        showToast('此座位無可退回的紀錄');
+        return;
+      }
+
+      closeSeatModal();
+      renderSeatMap();
+      renderHomeAllReservations();
+      renderWalkinList();
+      renderAllReservations();
+      updateStats();
     }
 
     // ========== WALK-IN ==========
@@ -1342,8 +1456,39 @@
       saveWalkins();
       renderWalkinList();
       renderSeatMap();
+      renderAllReservations();
       updateStats();
       showToast('已移除候位');
+    }
+
+    function openWalkinEditModal(id) {
+      const walkin = walkins.find(w => w.id === id);
+      if (!walkin) return;
+      document.getElementById('editWalkinId').value = id;
+      document.getElementById('editWalkinName').value = walkin.name;
+      document.getElementById('editWalkinGuests').value = walkin.guests;
+      document.getElementById('editWalkinNotes').value = walkin.notes || '';
+      document.getElementById('walkinEditModal').classList.add('active');
+    }
+    function closeWalkinEditModal() {
+      document.getElementById('walkinEditModal').classList.remove('active');
+    }
+    function saveWalkinEdit() {
+      const id = document.getElementById('editWalkinId').value;
+      const name = document.getElementById('editWalkinName').value.trim();
+      const guests = parseInt(document.getElementById('editWalkinGuests').value);
+      const notes = document.getElementById('editWalkinNotes').value.trim();
+      if (!name) { showToast('請填寫姓名'); return; }
+      const walkin = walkins.find(w => w.id === id);
+      if (!walkin) return;
+      walkin.name = name;
+      walkin.guests = guests;
+      walkin.notes = notes;
+      saveWalkins();
+      closeWalkinEditModal();
+      renderAllReservations();
+      renderWalkinList();
+      showToast('已更新候位資料');
     }
 
     function addToWaitlist() {
@@ -1419,7 +1564,46 @@
     }
     function updateTimeOptions() {
       const select = document.getElementById('resTime');
-      select.innerHTML = ALL_TIMES.map(t => `<option value="${t}">${t}</option>`).join('');
+      const date = document.getElementById('resDate')?.value;
+      const guests = parseInt(document.getElementById('resGuests')?.value) || 2;
+
+      select.innerHTML = ALL_TIMES.map(t => {
+        const timeMinutes = timeToMinutes(t);
+        const available = hasAnyAvailableTable(date, timeMinutes, guests);
+        const disabled = available ? '' : ' disabled';
+        return `<option value="${t}"${disabled}>${t}${disabled ? '（無空桌）' : ''}</option>`;
+      }).join('');
+    }
+
+    function hasAnyAvailableTable(date, timeMinutes, guests) {
+      if (!date) return false;
+      for (const t of tables) {
+        if (t.capacity < guests) continue;
+        if (t.status === 'in-use' || t.status === 'expired') continue;
+        // Check walkin overlap for today
+        if (date === getTodayStr()) {
+          const walkin = walkins.find(w => w.tableId === t.id && w.status === 'seated');
+          if (walkin) {
+            const walkinExpiry = walkin.seatedAt + (119 * 60 * 1000);
+            const now = new Date();
+            const resStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(timeMinutes / 60), timeMinutes % 60).getTime();
+            if (resStart < walkinExpiry) continue;
+          }
+        }
+        // Check reservation overlap
+        const newStart = timeMinutes;
+        const newEnd = timeMinutes + 119;
+        const hasOverlap = reservations.some(r =>
+          r.tableId === t.id &&
+          r.date === date &&
+          r.status !== 'cancelled' &&
+          r.status !== 'noshow' &&
+          isTimeOverlap(newStart, newEnd, timeToMinutes(r.time), timeToMinutes(r.time) + 119)
+        );
+        if (hasOverlap) continue;
+        return true; // table is available
+      }
+      return false;
     }
     function toggleTag(tag) {
       const idx = selectedTags.indexOf(tag);
@@ -1848,7 +2032,7 @@
       return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
     function getStatusLabel(status) {
-      const labels = { confirmed: '已確認', seated: '已入座', completed: '已完成', cancelled: '已取消', noshow: '未到' };
+      const labels = { confirmed: '已確認', seated: '已入座', completed: '已完成', cancelled: '已取消', noshow: '未到', waiting: '候位中', released: '已釋放' };
       return labels[status] || status;
     }
     function getTagLabel(tag) {
@@ -1863,8 +2047,8 @@
     }
 
     // ========== EVENTS ==========
-    document.getElementById('resGuests').addEventListener('change', renderTableSelect);
-    document.getElementById('resDate').addEventListener('change', renderTableSelect);
+    document.getElementById('resGuests').addEventListener('change', () => { updateTimeOptions(); renderTableSelect(); });
+    document.getElementById('resDate').addEventListener('change', () => { updateTimeOptions(); renderTableSelect(); });
     document.getElementById('resTime').addEventListener('change', renderTableSelect);
     document.getElementById('walkinGuests').addEventListener('change', renderWalkinTableGrid);
     document.addEventListener('keydown', e => {
@@ -1872,6 +2056,7 @@
         closeModal();
         closeSeatModal();
         closeWalkinModal();
+        closeWalkinEditModal();
       }
     });
 
