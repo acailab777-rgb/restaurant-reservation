@@ -348,7 +348,7 @@
       cursor: grab;
       user-select: none;
       transition: box-shadow 0.2s;
-      min-height: 90px;
+      min-height: 45px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -660,14 +660,14 @@
 
     function generateTables() {
       tables = [
-        { id: 'T1', name: '1號桌', capacity: 2, emoji: '🪑', status: 'in-use', note: '', reservationId: null, x: 0, y: 0 },
-        { id: 'T2', name: '2號桌', capacity: 2, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 1, y: 0 },
-        { id: 'T3', name: '3號桌', capacity: 4, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 2, y: 0 },
-        { id: 'T4', name: '4號桌', capacity: 4, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 3, y: 0 },
-        { id: 'T5', name: '5號桌', capacity: 6, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 0, y: 1 },
-        { id: 'T6', name: '6號桌', capacity: 6, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 1, y: 1 },
-        { id: 'T7', name: '7號桌', capacity: 8, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 2, y: 1 },
-        { id: 'T8', name: '8號桌', capacity: 10, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 3, y: 1 },
+        { id: 'T1', name: '1號桌', capacity: 2, emoji: '🍽️', status: 'in-use', note: '', reservationId: null, x: 0, y: 0 },
+        { id: 'T2', name: '2號桌', capacity: 2, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 1, y: 0 },
+        { id: 'T3', name: '3號桌', capacity: 4, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 2, y: 0 },
+        { id: 'T4', name: '4號桌', capacity: 4, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 3, y: 0 },
+        { id: 'T5', name: '5號桌', capacity: 6, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 0, y: 1 },
+        { id: 'T6', name: '6號桌', capacity: 6, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 1, y: 1 },
+        { id: 'T7', name: '7號桌', capacity: 8, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 2, y: 1 },
+        { id: 'T8', name: '8號桌', capacity: 10, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 3, y: 1 },
         { id: 'B1', name: '包廂1', capacity: 12, emoji: '🚪', status: 'empty', note: '', reservationId: null, x: 0, y: 2 },
         { id: 'B2', name: '包廂2', capacity: 8, emoji: '🚪', status: 'empty', note: '', reservationId: null, x: 1, y: 2 },
       ];
@@ -1184,7 +1184,7 @@
           r.date === date &&
           r.status !== 'cancelled' &&
           r.status !== 'noshow' &&
-          !isTimeOverlap(newStart, newEnd, timeToMinutes(r.time), timeToMinutes(r.time) + 120)
+          isTimeOverlap(newStart, newEnd, timeToMinutes(r.time), timeToMinutes(r.time) + 120)
         );
         if (overlap) {
           alert('此桌在該時段已有訂位');
@@ -1477,7 +1477,7 @@
         id: newId,
         name: `${maxNum}號桌`,
         capacity: 4,
-        emoji: '🪑',
+        emoji: '🍽️',
         status: 'empty',
         note: '',
         reservationId: null,
