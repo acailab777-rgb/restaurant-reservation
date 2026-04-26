@@ -779,7 +779,15 @@
       setInterval(() => {
         checkWalkinExpiry();
         checkSeatedReservationExpiry();
-        checkNoshow();
+        const noshowChanged = checkNoshow();
+        if (noshowChanged) {
+          // Status was updated — refresh all views
+          renderReservations();
+          renderHomeAllReservations();
+          renderAllReservations();
+          renderWalkinList();
+          updateStats();
+        }
         if (currentTab === 'seats') {
           renderSeatMap();
           renderWalkinList();
@@ -815,11 +823,8 @@
       });
       if (changed) {
         saveReservations();
-        renderReservations();
-        renderHomeAllReservations();
-        renderAllReservations();
-        updateStats();
       }
+      return changed;
     }
 
     function checkWalkinExpiry() {
@@ -1566,13 +1571,20 @@
       const select = document.getElementById('resTime');
       const date = document.getElementById('resDate')?.value;
       const guests = parseInt(document.getElementById('resGuests')?.value) || 2;
+      const today = getTodayStr();
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
       select.innerHTML = ALL_TIMES.map(t => {
         const timeMinutes = timeToMinutes(t);
+        // Past time for today — skip entirely (don't show)
+        if (date === today && timeMinutes <= currentMinutes) {
+          return ''; // hide past slots
+        }
         const available = hasAnyAvailableTable(date, timeMinutes, guests);
         const disabled = available ? '' : ' disabled';
         return `<option value="${t}"${disabled}>${t}${disabled ? '（無空桌）' : ''}</option>`;
-      }).join('');
+      }).filter(o => o !== '').join('');
     }
 
     function hasAnyAvailableTable(date, timeMinutes, guests) {
@@ -1822,12 +1834,13 @@
           unavailable = !avail.available;
           reason = avail.reason;
         }
-        const occupied = t.status !== 'empty';
+        // Show green if available at selected date/time; red if booked; grey/red-x if capacity不足
+        const color = disabled ? '⚪' : unavailable ? '🔴' : '🟢';
         return `<button type="button" class="table-btn ${selectedTable === t.id ? 'selected' : ''} ${disabled || unavailable ? 'disabled' : ''}"
           data-table="${t.id}" onclick="selectTable('${t.id}')"
           ${disabled ? 'disabled' : ''}
-          title="${disabled ? '人數不足' : unavailable ? reason : occupied ? '已被佔用' : ''}">
-          ${t.name}${disabled ? '❌' : unavailable ? '🔴' : occupied ? '🔴' : '🟢'}
+          title="${disabled ? '人數不足' : unavailable ? reason : ''}">
+          ${t.name}${color}
         </button>`;
       }).join('');
     }
