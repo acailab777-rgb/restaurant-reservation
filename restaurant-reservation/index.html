@@ -35,8 +35,9 @@
       z-index: 100;
       box-shadow: var(--shadow);
     }
-    header h1 { font-size: 1.2rem; margin-bottom: 0.5rem; }
-    .header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .header-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+    header h1 { font-size: 1.2rem; }
+    .header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
     .btn {
       padding: 0.5rem 1rem;
       border: none;
@@ -50,9 +51,20 @@
     .btn-secondary { background: var(--info); color: white; }
     .btn-success { background: var(--success); color: white; }
     .btn-warning { background: var(--warning); color: white; }
+    .btn-danger { background: var(--accent); color: white; }
     .btn-outline { background: transparent; border: 1px solid currentColor; color: inherit; }
     .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* Home button in header */
+    .btn-home {
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .btn-home:hover { background: rgba(255,255,255,0.25); }
     /* Search */
     .search-bar {
       padding: 0.75rem 1rem;
@@ -72,7 +84,9 @@
       background: var(--card);
       border-bottom: 1px solid var(--border);
       overflow-x: auto;
+      scrollbar-width: none;
     }
+    .tabs::-webkit-scrollbar { display: none; }
     .tab {
       padding: 0.75rem 1rem;
       border: none;
@@ -104,9 +118,10 @@
     }
     .card-title { font-weight: 600; font-size: 1rem; }
     /* Seat Map */
+    .seat-map-container { position: relative; }
     .seat-map {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
       gap: 0.75rem;
       margin-top: 1rem;
     }
@@ -123,14 +138,22 @@
       font-size: 0.75rem;
       padding: 0.5rem;
       text-align: center;
+      min-height: 80px;
     }
     .seat:hover { transform: scale(1.05); }
     .seat.empty { background: #e8f5e9; border-color: var(--success); }
-    .seat.occupied { background: #fff3e0; border-color: var(--warning); }
+    .seat.in-use { background: #ffebee; border-color: var(--accent); }
+    .seat.reserved-soon { background: #fff3e0; border-color: var(--warning); }
     .seat.selected { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(231,76,60,0.3); }
     .seat .emoji { font-size: 1.5rem; margin-bottom: 0.25rem; }
-    .seat .capacity { font-weight: 600; }
+    .seat .name { font-weight: 600; }
+    .seat .capacity { font-size: 0.7rem; color: var(--text-light); }
+    .seat .timer { font-size: 0.7rem; color: var(--accent); font-weight: 600; margin-top: 0.2rem; }
     .seat .time-info { font-size: 0.65rem; color: var(--text-light); margin-top: 0.2rem; }
+
+    /* Walk-in button */
+    .walkin-btn-area { margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
     /* Reservation List */
     .res-item {
       padding: 0.75rem;
@@ -142,15 +165,16 @@
       justify-content: space-between;
       align-items: flex-start;
       gap: 0.5rem;
+      flex-wrap: wrap;
     }
     .res-item.status-cancelled { border-left-color: var(--text-light); opacity: 0.6; }
     .res-item.status-noshow { border-left-color: var(--accent); }
     .res-item.status-completed { border-left-color: var(--info); }
-    .res-item .info { flex: 1; }
-    .res-item .name { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .res-item .info { flex: 1; min-width: 150px; }
+    .res-item .name { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .res-item .details { font-size: 0.85rem; color: var(--text-light); margin-top: 0.25rem; }
     .res-item .tags { display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.25rem; }
-    .res-item .actions { display: flex; gap: 0.25rem; flex-shrink: 0; }
+    .res-item .actions { display: flex; gap: 0.25rem; flex-shrink: 0; flex-wrap: wrap; }
     .tag {
       font-size: 0.7rem;
       padding: 0.15rem 0.4rem;
@@ -224,22 +248,6 @@
     }
     .time-slot.active { background: var(--accent); color: white; border-color: var(--accent); }
     .time-slot.has-booking { background: #fff3e0; border-color: var(--warning); }
-    /* Period Toggle */
-    .period-toggle {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-    }
-    .period-btn {
-      flex: 1;
-      padding: 0.6rem;
-      border: 2px solid var(--border);
-      background: var(--card);
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 500;
-    }
-    .period-btn.active { border-color: var(--accent); background: #fce4ec; }
     /* Toast */
     .toast {
       position: fixed;
@@ -253,6 +261,7 @@
       z-index: 300;
       opacity: 0;
       transition: opacity 0.3s;
+      white-space: nowrap;
     }
     .toast.show { opacity: 1; }
     /* File Input */
@@ -280,7 +289,7 @@
     }
     .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
     .stat-label { font-size: 0.75rem; color: var(--text-light); }
-    /* Table Grid */
+    /* Table Grid (modal table select) */
     .table-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -294,23 +303,121 @@
       background: var(--card);
       cursor: pointer;
       font-size: 0.8rem;
+      text-align: center;
     }
-    .table-btn:hover { background: #fce4ec; }
+    .table-btn:hover:not(:disabled) { background: #fce4ec; }
     .table-btn.selected { background: var(--accent); color: white; border-color: var(--accent); }
+    .table-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .table-btn.capacity-hint { font-size: 0.65rem; color: var(--text-light); }
+    /* Walk-in Modal Table Select */
+    .walkin-table-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      max-height: 250px;
+      overflow-y: auto;
+    }
+    .walkin-table-btn {
+      padding: 0.5rem;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      background: #e8f5e9;
+      cursor: pointer;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    .walkin-table-btn:hover { background: #c8e6c9; }
+    .walkin-table-btn.selected { background: var(--success); color: white; border-color: var(--success); }
+    .walkin-table-btn .cap { font-size: 0.65rem; opacity: 0.8; }
+    /* Deployment Tab */
+    .deploy-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+    .deploy-seat-map {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 0.75rem;
+      position: relative;
+      min-height: 300px;
+    }
+    .deploy-seat {
+      background: #e8f5e9;
+      border: 2px solid var(--success);
+      border-radius: 12px;
+      padding: 0.75rem;
+      text-align: center;
+      cursor: grab;
+      user-select: none;
+      transition: box-shadow 0.2s;
+      min-height: 90px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+    .deploy-seat:active { cursor: grabbing; }
+    .deploy-seat.drag-over { box-shadow: 0 0 0 3px var(--info); background: #e3f2fd; }
+    .deploy-seat .emoji { font-size: 1.5rem; }
+    .deploy-seat .name { font-weight: 600; font-size: 0.85rem; }
+    .deploy-seat .cap { font-size: 0.7rem; color: var(--text-light); }
+    .deploy-seat .cap-edit { width: 60px; text-align: center; font-size: 0.8rem; padding: 0.2rem; border: 1px solid var(--border); border-radius: 4px; }
+    .deploy-seat .delete-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    .deploy-seat .delete-btn:hover { background: #c0392b; }
+    .deploy-seat.dragging { opacity: 0.5; }
+    .pending-changes-banner {
+      background: var(--warning);
+      color: #333;
+      padding: 0.75rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .pending-changes-banner.hidden { display: none; }
+    /* Responsive */
     @media (min-width: 768px) {
       header h1 { font-size: 1.5rem; }
       .seat-map { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+    }
+    @media (max-width: 480px) {
+      .form-row { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+      .stat-value { font-size: 1.2rem; }
+      .header-row { flex-direction: column; align-items: flex-start; }
+      .table-grid { grid-template-columns: repeat(3, 1fr); }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>🍽️ 餐廳訂位管理</h1>
-    <div class="header-actions">
-      <button class="btn btn-primary" onclick="openReservationModal()">+ 新增訂位</button>
-      <button class="btn btn-outline" style="color:white" onclick="exportData()">📥 匯出</button>
-      <button class="btn btn-outline" style="color:white" onclick="document.getElementById('importFile').click()">📤 匯入</button>
-      <input type="file" id="importFile" class="file-input" accept=".json" onchange="importData(event)">
+    <div class="header-row">
+      <h1>🍽️ 餐廳訂位管理</h1>
+      <div class="header-actions">
+        <button class="btn btn-home" onclick="goHome()">🏠 回到首頁</button>
+        <button class="btn btn-primary" onclick="openReservationModal()">+ 新增訂位</button>
+        <button class="btn btn-outline" style="color:white" onclick="exportData()">📥 匯出</button>
+        <button class="btn btn-outline" style="color:white" onclick="document.getElementById('importFile').click()">📤 匯入</button>
+        <input type="file" id="importFile" class="file-input" accept=".json" onchange="importData(event)">
+      </div>
     </div>
   </header>
 
@@ -322,34 +429,50 @@
     <button class="tab active" data-tab="today" onclick="switchTab('today')">今日訂位</button>
     <button class="tab" data-tab="seats" onclick="switchTab('seats')">座位圖</button>
     <button class="tab" data-tab="all" onclick="switchTab('all')">所有記錄</button>
+    <button class="tab" data-tab="deploy" onclick="switchTab('deploy')">座位圖部署</button>
   </div>
 
   <div class="main">
     <!-- Stats -->
     <div class="stats">
       <div class="stat"><div class="stat-value" id="statTotal">0</div><div class="stat-label">今日訂位</div></div>
-      <div class="stat"><div class="stat-value" id="statSeated">0</div><div class="stat-label">已入座</div></div>
-      <div class="stat"><div class="stat-value" id="statAvailable">0</div><div class="stat-label">空位</div></div>
+      <div class="stat"><div class="stat-value" id="statSeated">0</div><div class="stat-label">使用中</div></div>
+      <div class="stat"><div class="stat-value" id="statAvailable">0</div><div class="stat-label">空桌</div></div>
     </div>
 
     <!-- Today Tab -->
     <div id="tab-today" class="tab-content">
-      <div class="period-toggle">
-        <button class="period-btn active" onclick="setPeriod('lunch')">🌅 午餐</button>
-        <button class="period-btn" onclick="setPeriod('dinner')">🌙 晚餐</button>
-      </div>
       <div class="time-slots" id="timeSlots"></div>
       <div id="todayReservations"></div>
     </div>
 
     <!-- Seats Tab -->
     <div id="tab-seats" class="tab-content" style="display:none">
+      <div class="walkin-btn-area">
+        <button class="btn btn-success" onclick="openWalkinModal()">🍽️ 現場候位</button>
+      </div>
       <div id="seatMap" class="seat-map"></div>
     </div>
 
     <!-- All Tab -->
     <div id="tab-all" class="tab-content" style="display:none">
       <div id="allReservations"></div>
+    </div>
+
+    <!-- Deploy Tab -->
+    <div id="tab-deploy" class="tab-content" style="display:none">
+      <div id="pendingChangesBanner" class="pending-changes-banner hidden">
+        <span>⚠️ 您有尚未確認的更動</span>
+        <div>
+          <button class="btn btn-sm btn-outline" onclick="discardDeployChanges()">捨棄</button>
+          <button class="btn btn-sm btn-success" onclick="confirmDeployChanges()">✅ 確認更動</button>
+        </div>
+      </div>
+      <div class="deploy-header">
+        <div style="font-weight:600">拖曳調整位置｜點擊人數可修改</div>
+        <button class="btn btn-primary btn-sm" onclick="addNewTable()">+ 新增桌子</button>
+      </div>
+      <div id="deploySeatMap" class="deploy-seat-map"></div>
     </div>
   </div>
 
@@ -374,18 +497,11 @@
           <input type="date" id="resDate" required>
         </div>
         <div class="form-group">
-          <label>時段 *</label>
-          <select id="resPeriod">
-            <option value="lunch">午餐</option>
-            <option value="dinner">晚餐</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
           <label>時間 *</label>
           <select id="resTime"></select>
         </div>
+      </div>
+      <div class="form-row">
         <div class="form-group">
           <label>人數 *</label>
           <select id="resGuests">
@@ -399,22 +515,24 @@
             <option value="8">8人</option>
             <option value="9">9人</option>
             <option value="10">10人</option>
+            <option value="12">12人</option>
+            <option value="15">15人</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>狀態</label>
+          <select id="resStatus">
+            <option value="confirmed">已確認</option>
+            <option value="seated">已入座</option>
+            <option value="completed">已完成</option>
+            <option value="cancelled">已取消</option>
+            <option value="noshow">未到</option>
           </select>
         </div>
       </div>
       <div class="form-group">
         <label>座位</label>
         <div class="table-grid" id="tableSelect"></div>
-      </div>
-      <div class="form-group">
-        <label>狀態</label>
-        <select id="resStatus">
-          <option value="confirmed">已確認</option>
-          <option value="seated">已入座</option>
-          <option value="completed">已完成</option>
-          <option value="cancelled">已取消</option>
-          <option value="noshow">未到</option>
-        </select>
       </div>
       <div class="form-group">
         <label>特殊標記</label>
@@ -452,32 +570,45 @@
       <div id="seatDetailContent"></div>
       <div class="modal-actions">
         <button class="btn btn-outline" onclick="closeSeatModal()">關閉</button>
-        <button class="btn btn-outline" onclick="editSeatStatus()">編輯狀態</button>
-        <button class="btn btn-warning" onclick="clearSeatAssignment()">釋放座位</button>
+        <button class="btn btn-warning" id="releaseSeatBtn" onclick="clearSeatAssignment()">釋放座位</button>
       </div>
     </div>
   </div>
 
-  <!-- Seat Status Edit Modal -->
-  <div class="modal-overlay" id="seatStatusModal">
+  <!-- Walk-in Modal -->
+  <div class="modal-overlay" id="walkinModal">
     <div class="modal">
-      <h2>編輯座位狀態</h2>
-      <input type="hidden" id="seatStatusId">
+      <h2>🍽️ 現場候位</h2>
       <div class="form-group">
-        <label>狀態</label>
-        <select id="seatNewStatus">
-          <option value="empty">空桌</option>
-          <option value="reserved">已預訂</option>
-          <option value="seated">已入座</option>
+        <label>姓名 *</label>
+        <input type="text" id="walkinName" required>
+      </div>
+      <div class="form-group">
+        <label>人數 *</label>
+        <select id="walkinGuests">
+          <option value="1">1人</option>
+          <option value="2" selected>2人</option>
+          <option value="3">3人</option>
+          <option value="4">4人</option>
+          <option value="5">5人</option>
+          <option value="6">6人</option>
+          <option value="7">7人</option>
+          <option value="8">8人</option>
+          <option value="9">9人</option>
+          <option value="10">10人</option>
         </select>
       </div>
       <div class="form-group">
+        <label>選擇空桌</label>
+        <div class="walkin-table-grid" id="walkinTableGrid"></div>
+      </div>
+      <div class="form-group">
         <label>備註</label>
-        <textarea id="seatStatusNote" rows="2"></textarea>
+        <textarea id="walkinNotes" rows="2" placeholder="如：想要靠窗位置"></textarea>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-outline" onclick="closeSeatStatusModal()">取消</button>
-        <button class="btn btn-success" onclick="updateSeatStatus()">更新</button>
+        <button class="btn btn-outline" onclick="closeWalkinModal()">取消</button>
+        <button class="btn btn-success" onclick="confirmWalkin()">確認入座</button>
       </div>
     </div>
   </div>
@@ -488,39 +619,58 @@
     // ========== DATA ==========
     const STORAGE_KEY = 'restaurant_reservations';
     const TABLES_KEY = 'restaurant_tables';
-    const SEAT_EMOJIS = ['🪑', '🪑', '🪑', '🪑', '🪑', '🪑', '🪑', '🪑'];
-    const LUNCH_TIMES = ['11:00','11:30','12:00','12:30','13:00','13:30'];
-    const DINNER_TIMES = ['17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00'];
-    let currentPeriod = 'lunch';
-    let selectedTable = null;
-    let selectedTags = [];
+    const WALKINS_KEY = 'restaurant_walkins';
     let reservations = [];
     let tables = [];
+    let walkins = [];
+
+    // Generate time slots every 15 minutes from 12:00 to 21:00
+    const ALL_TIMES = [];
+    for (let h = 12; h <= 21; h++) {
+      for (let m = 0; m < 60; m += 15) {
+        const hour = String(h).padStart(2, '0');
+        const min = String(m).padStart(2, '0');
+        ALL_TIMES.push(`${hour}:${min}`);
+      }
+    }
+
+    let selectedTable = null;
+    let selectedWalkinTable = null;
+    let selectedTags = [];
+    let currentTab = 'today';
+
+    // Deployment pending changes
+    let pendingTables = null; // null = no pending changes
+    let draggedTableId = null;
 
     // ========== INIT ==========
     function init() {
       loadData();
       if (tables.length === 0) generateTables();
+      // Clear walkins on fresh day
+      checkDailyFreshStart();
       setTodayDate();
       renderTimeSlots();
       renderSeatMap();
       renderReservations();
       updateStats();
       renderTableSelect();
+      initDeploy();
+      startTimers();
     }
 
     function generateTables() {
       tables = [
-        { id: 'T1', name: '1號桌', capacity: 2, emoji: '🪑', status: 'empty', note: '', reservationId: null },
-        { id: 'T2', name: '2號桌', capacity: 2, emoji: '🪑', status: 'empty', note: '', reservationId: null },
-        { id: 'T3', name: '3號桌', capacity: 4, emoji: '🪑', status: 'empty', note: '', reservationId: null },
-        { id: 'T4', name: '4號桌', capacity: 4, emoji: '🪑', status: 'empty', note: '', reservationId: null },
-        { id: 'T5', name: '5號桌', capacity: 6, emoji: '🪑', status: 'empty', note: '', reservationId: null },
-        { id: 'T6', name: '6號桌', capacity: 6, emoji: '🪑', status: 'empty', note: '', reservationId: null },
-        { id: 'T7', name: '7號桌', capacity: 8, emoji: '🪑', status: 'empty', note: '', reservationId: null },
-        { id: 'T8', name: '8號桌', capacity: 10, emoji: '🪑', status: 'empty', note: '', reservationId: null },
-        { id: 'B1', name: '包廂1', capacity: 12, emoji: '🚪', status: 'empty', note: '', reservationId: null },
-        { id: 'B2', name: '包廂2', capacity: 8, emoji: '🚪', status: 'empty', note: '', reservationId: null },
+        { id: 'T1', name: '1號桌', capacity: 2, emoji: '🪑', status: 'in-use', note: '', reservationId: null, x: 0, y: 0 },
+        { id: 'T2', name: '2號桌', capacity: 2, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 1, y: 0 },
+        { id: 'T3', name: '3號桌', capacity: 4, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 2, y: 0 },
+        { id: 'T4', name: '4號桌', capacity: 4, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 3, y: 0 },
+        { id: 'T5', name: '5號桌', capacity: 6, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 0, y: 1 },
+        { id: 'T6', name: '6號桌', capacity: 6, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 1, y: 1 },
+        { id: 'T7', name: '7號桌', capacity: 8, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 2, y: 1 },
+        { id: 'T8', name: '8號桌', capacity: 10, emoji: '🪑', status: 'empty', note: '', reservationId: null, x: 3, y: 1 },
+        { id: 'B1', name: '包廂1', capacity: 12, emoji: '🚪', status: 'empty', note: '', reservationId: null, x: 0, y: 2 },
+        { id: 'B2', name: '包廂2', capacity: 8, emoji: '🚪', status: 'empty', note: '', reservationId: null, x: 1, y: 2 },
       ];
       saveTables();
     }
@@ -529,19 +679,94 @@
     function loadData() {
       const r = localStorage.getItem(STORAGE_KEY);
       const t = localStorage.getItem(TABLES_KEY);
+      const w = localStorage.getItem(WALKINS_KEY);
       reservations = r ? JSON.parse(r) : [];
       tables = t ? JSON.parse(t) : [];
+      walkins = w ? JSON.parse(w) : [];
     }
-    function saveReservations() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(reservations));
+    function saveReservations() { localStorage.setItem(STORAGE_KEY, JSON.stringify(reservations)); }
+    function saveTables() { localStorage.setItem(TABLES_KEY, JSON.stringify(tables)); }
+    function saveWalkins() { localStorage.setItem(WALKINS_KEY, JSON.stringify(walkins)); }
+
+    // ========== DAILY FRESH START ==========
+    const LAST_CLEAR_KEY = 'restaurant_last_clear';
+    function checkDailyFreshStart() {
+      const today = getTodayStr();
+      const lastClear = localStorage.getItem(LAST_CLEAR_KEY);
+      if (lastClear !== today) {
+        walkins = [];
+        saveWalkins();
+        localStorage.setItem(LAST_CLEAR_KEY, today);
+        // Also expire all walkin table statuses
+        tables.forEach(t => {
+          if (t.status === 'in-use' && t.walkinId) {
+            t.status = 'empty';
+            t.walkinId = null;
+            t.reservationId = null;
+          }
+        });
+        saveTables();
+      }
     }
-    function saveTables() {
-      localStorage.setItem(TABLES_KEY, JSON.stringify(tables));
+
+    // ========== TIMERS ==========
+    function startTimers() {
+      // Check every minute for walkin expiry
+      setInterval(() => {
+        checkWalkinExpiry();
+        if (currentTab === 'seats') renderSeatMap();
+        if (currentTab === 'today') updateStats();
+      }, 60000);
+
+      // Check every second for timer display
+      setInterval(() => {
+        if (currentTab === 'seats') renderSeatMap();
+      }, 1000);
+
+      // Check daily clear
+      setInterval(() => {
+        checkDailyFreshStart();
+      }, 60000);
+    }
+
+    function checkWalkinExpiry() {
+      const now = Date.now();
+      let changed = false;
+      walkins = walkins.filter(w => {
+        const expiry = w.seatedAt + (2 * 60 * 60 * 1000); // 2 hours
+        if (now >= expiry) {
+          // Release table
+          const table = tables.find(t => t.id === w.tableId);
+          if (table) {
+            table.status = 'empty';
+            table.walkinId = null;
+            table.reservationId = null;
+          }
+          changed = true;
+          return false; // remove walkin
+        }
+        return true;
+      });
+      if (changed) {
+        saveWalkins();
+        saveTables();
+        renderSeatMap();
+        updateStats();
+      }
+    }
+
+    function getWalkinRemaining(walkin) {
+      const expiry = walkin.seatedAt + (2 * 60 * 60 * 1000);
+      const remaining = Math.max(0, expiry - Date.now());
+      const mins = Math.floor(remaining / 60000);
+      const hrs = Math.floor(mins / 60);
+      const m = mins % 60;
+      return hrs > 0 ? `${hrs}:${String(m).padStart(2, '0')}` : `${m}:${String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0')}`;
     }
 
     // ========== EXPORT / IMPORT ==========
     function exportData() {
-      const data = { reservations, tables, exportDate: new Date().toISOString() };
+      const data = { reservations, tables, walkins, exportDate: new Date().toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -560,11 +785,15 @@
           const data = JSON.parse(ev.target.result);
           if (data.reservations) reservations = data.reservations;
           if (data.tables) tables = data.tables;
+          if (data.walkins) walkins = data.walkins;
           saveReservations();
           saveTables();
+          saveWalkins();
           renderReservations();
           renderSeatMap();
           updateStats();
+          renderTableSelect();
+          initDeploy();
           showToast('已匯入資料');
         } catch (err) {
           showToast('匯入失敗：格式錯誤');
@@ -579,13 +808,18 @@
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('resDate').value = today;
       document.getElementById('resDate').min = today;
+      updateTimeOptions();
     }
-    function getTodayStr() {
-      return new Date().toISOString().split('T')[0];
+    function getTodayStr() { return new Date().toISOString().split('T')[0]; }
+
+    // ========== HOME ==========
+    function goHome() {
+      switchTab('today');
     }
 
     // ========== TABS ==========
     function switchTab(tab) {
+      currentTab = tab;
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
       document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
@@ -597,31 +831,29 @@
         renderSeatMap();
       } else if (tab === 'all') {
         renderAllReservations();
+      } else if (tab === 'deploy') {
+        initDeploy();
       }
-    }
-
-    // ========== PERIOD ==========
-    function setPeriod(p) {
-      currentPeriod = p;
-      document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-      event.target.classList.add('active');
-      renderTimeSlots();
-      renderReservations();
     }
 
     // ========== TIME SLOTS ==========
     function renderTimeSlots() {
-      const times = currentPeriod === 'lunch' ? LUNCH_TIMES : DINNER_TIMES;
       const today = getTodayStr();
       const container = document.getElementById('timeSlots');
-      container.innerHTML = times.map(t => {
-        const hasBooking = reservations.some(r => r.date === today && r.period === currentPeriod && r.time === t && r.status !== 'cancelled' && r.status !== 'noshow');
+      container.innerHTML = ALL_TIMES.map(t => {
+        const hasBooking = reservations.some(r =>
+          r.date === today &&
+          r.time === t &&
+          r.status !== 'cancelled' &&
+          r.status !== 'noshow'
+        );
         return `<button class="time-slot ${hasBooking ? 'has-booking' : ''}" onclick="filterByTime('${t}')">${t}</button>`;
       }).join('');
     }
     function filterByTime(time) {
-      document.getElementById('searchInput').value = time;
-      document.getElementById('searchInput').dataset.filterTime = time;
+      const searchInput = document.getElementById('searchInput');
+      searchInput.value = time;
+      searchInput.dataset.filterTime = time;
       filterReservations();
     }
 
@@ -630,7 +862,7 @@
       const today = getTodayStr();
       const search = document.getElementById('searchInput').value.toLowerCase();
       const filterTime = document.getElementById('searchInput').dataset.filterTime || '';
-      let filtered = reservations.filter(r => r.date === today && r.period === currentPeriod);
+      let filtered = reservations.filter(r => r.date === today);
       if (filterTime) filtered = filtered.filter(r => r.time === filterTime);
       if (search) {
         filtered = filtered.filter(r =>
@@ -639,11 +871,12 @@
           (r.notes && r.notes.toLowerCase().includes(search))
         );
       }
+      filtered.sort((a, b) => a.time.localeCompare(b.time));
       renderReservationList(filtered, 'todayReservations');
     }
     function renderAllReservations() {
       const search = document.getElementById('searchInput').value.toLowerCase();
-      let filtered = [...reservations].sort((a,b) => new Date(b.date) - new Date(a.date) || b.time.localeCompare(a.time));
+      let filtered = [...reservations].sort((a, b) => new Date(b.date) - new Date(a.date) || b.time.localeCompare(a.time));
       if (search) {
         filtered = filtered.filter(r =>
           r.name.toLowerCase().includes(search) ||
@@ -662,12 +895,14 @@
       container.innerHTML = list.map(r => {
         const table = tables.find(t => t.id === r.tableId);
         const seatedDuration = r.seatedAt ? getSeatedDuration(r.seatedAt) : '';
+        const isWalkin = walkins.some(w => w.reservationId === r.id);
         return `
           <div class="res-item status-${r.status}">
             <div class="info">
               <div class="name">
                 ${escapeHtml(r.name)}
                 ${r.tags.map(tag => `<span class="tag ${tag}">${getTagLabel(tag)}</span>`).join('')}
+                ${isWalkin ? '<span class="tag" style="background:var(--success)">現場</span>' : ''}
                 <span class="status-badge ${r.status}">${getStatusLabel(r.status)}</span>
               </div>
               <div class="details">
@@ -696,120 +931,190 @@
     }
 
     // ========== SEAT MAP ==========
+    function getTableStatus(table) {
+      const now = new Date();
+      const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+
+      // Check if has walkin
+      const walkin = walkins.find(w => w.tableId === table.id);
+      if (walkin) return 'in-use';
+
+      // Check if has seated reservation
+      const seatedRes = reservations.find(r => r.id === table.reservationId && r.status === 'seated');
+      if (seatedRes) return 'in-use';
+
+      // Check if has upcoming reservation within 1 hour
+      const upcomingRes = reservations.find(r =>
+        r.tableId === table.id &&
+        r.status === 'confirmed' &&
+        new Date(`${r.date}T${r.time}`) <= oneHourLater &&
+        new Date(`${r.date}T${r.time}`) >= now
+      );
+      if (upcomingRes) return 'reserved-soon';
+
+      return 'empty';
+    }
+
     function renderSeatMap() {
       const container = document.getElementById('seatMap');
       container.innerHTML = tables.map(t => {
-        const res = reservations.find(r => r.id === t.reservationId && r.status === 'seated');
-        const seatedDuration = res && res.seatedAt ? getSeatedDuration(res.seatedAt) : '';
+        const status = getTableStatus(t);
+        const walkin = walkins.find(w => w.tableId === t.id);
+        const seatedRes = reservations.find(r => r.id === t.reservationId && r.status === 'seated');
+        const displayName = status === 'in-use' && walkin ? walkin.name : t.name;
+        const timerDisplay = walkin ? getWalkinRemaining(walkin) : (seatedRes && seatedRes.seatedAt ? getSeatedDuration(seatedRes.seatedAt) : '');
+
         return `
-          <div class="seat ${t.status === 'empty' ? 'empty' : 'occupied'} ${selectedTable === t.id ? 'selected' : ''}" onclick="selectSeat('${t.id}')">
+          <div class="seat ${status} ${selectedTable === t.id ? 'selected' : ''}" onclick="selectSeat('${t.id}')">
             <div class="emoji">${t.emoji}</div>
-            <div class="capacity">${t.name}</div>
-            <div class="time-info">${t.capacity}人</div>
-            ${t.status === 'occupied' && res ? `<div class="time-info">👤${res.name}</div><div class="time-info">⏱️${seatedDuration}</div>` : ''}
+            <div class="name">${t.name}</div>
+            <div class="capacity">${t.capacity}人</div>
+            ${status === 'in-use' ? `
+              <div class="time-info">👤${escapeHtml(displayName)}</div>
+              <div class="timer">⏱️${timerDisplay}</div>
+            ` : ''}
+            ${status === 'reserved-soon' ? `<div class="time-info">🔔即將來店</div>` : ''}
           </div>
         `;
       }).join('');
     }
+
     function selectSeat(id) {
       const table = tables.find(t => t.id === id);
       if (!table) return;
+      const status = getTableStatus(table);
       document.getElementById('seatId').value = id;
       document.getElementById('seatModalTitle').textContent = table.name + ' 詳情';
-      const res = reservations.find(r => r.id === table.reservationId);
-      document.getElementById('seatDetailContent').innerHTML = `
+
+      const walkin = walkins.find(w => w.tableId === id);
+      const seatedRes = reservations.find(r => r.id === table.reservationId && r.status === 'seated');
+
+      let content = `
         <p><strong>人數：</strong>${table.capacity}人</p>
-        <p><strong>狀態：</strong>${table.status === 'empty' ? '空桌' : table.status === 'reserved' ? '已預訂' : '已入座'}</p>
-        ${table.note ? `<p><strong>備註：</strong>${escapeHtml(table.note)}</p>` : ''}
-        ${res ? `
+        <p><strong>狀態：</strong>${
+          status === 'empty' ? '空桌 🟢' :
+          status === 'in-use' ? '使用中 🔴' :
+          '即將來店 🟡'
+        }</p>
+        ${status === 'in-use' && walkin ? `
           <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
-          <p><strong>訂位人：</strong>${escapeHtml(res.name)}</p>
-          <p><strong>電話：</strong>${res.phone || '-'}</p>
-          <p><strong>人數：</strong>${res.guests}人</p>
-          <p><strong>時間：</strong>${res.date} ${res.time}</p>
-          ${res.notes ? `<p><strong>備註：</strong>${escapeHtml(res.notes)}</p>` : ''}
+          <p><strong>現場候位</strong></p>
+          <p><strong>姓名：</strong>${escapeHtml(walkin.name)}</p>
+          <p><strong>人數：</strong>${walkin.guests}人</p>
+          <p><strong>候位時間：</strong>${new Date(walkin.seatedAt).toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'})}</p>
+          <p><strong>剩餘時間：</strong><span style="color:var(--accent);font-weight:700">${getWalkinRemaining(walkin)}</span></p>
+          ${walkin.notes ? `<p><strong>備註：</strong>${escapeHtml(walkin.notes)}</p>` : ''}
+        ` : ''}
+        ${seatedRes ? `
+          <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
+          <p><strong>訂位人：</strong>${escapeHtml(seatedRes.name)}</p>
+          <p><strong>電話：</strong>${seatedRes.phone || '-'}</p>
+          <p><strong>人數：</strong>${seatedRes.guests}人</p>
+          <p><strong>時間：</strong>${seatedRes.date} ${seatedRes.time}</p>
+          ${seatedRes.notes ? `<p><strong>備註：</strong>${escapeHtml(seatedRes.notes)}</p>` : ''}
         ` : ''}
       `;
+      document.getElementById('seatDetailContent').innerHTML = content;
+      document.getElementById('releaseSeatBtn').style.display = (status === 'in-use') ? '' : 'none';
       document.getElementById('seatModal').classList.add('active');
-      // Store current table id for edit access
-      document.getElementById('seatId').value = id;
     }
-    function closeSeatModal() {
-      document.getElementById('seatModal').classList.remove('active');
-    }
-    function editSeatStatus() {
-      const id = document.getElementById('seatId').value;
-      closeSeatModal();
-      openSeatStatusModal(id);
-    }
+    function closeSeatModal() { document.getElementById('seatModal').classList.remove('active'); }
     function clearSeatAssignment() {
       const id = document.getElementById('seatId').value;
       const table = tables.find(t => t.id === id);
-      if (table && table.reservationId) {
+      if (!table) return;
+
+      // Release walkin if any
+      const walkinIdx = walkins.findIndex(w => w.tableId === id);
+      if (walkinIdx > -1) {
+        walkins.splice(walkinIdx, 1);
+        saveWalkins();
+      }
+
+      // Release reservation if any
+      if (table.reservationId) {
         const res = reservations.find(r => r.id === table.reservationId);
         if (res) {
           res.tableId = null;
+          if (res.status === 'seated') res.status = 'confirmed';
           saveReservations();
         }
-        table.reservationId = null;
-        table.status = 'empty';
-        saveTables();
-        renderSeatMap();
-        updateStats();
-        showToast('已釋放座位');
       }
+
+      table.reservationId = null;
+      table.walkinId = null;
+      table.status = 'empty';
+      saveTables();
       closeSeatModal();
+      renderSeatMap();
+      updateStats();
+      showToast('已釋放座位');
     }
 
-    // ========== SEAT STATUS EDIT ==========
-    let pendingSeatStatus = null;
-    function openSeatStatusModal(id) {
-      const table = tables.find(t => t.id === id);
+    // ========== WALK-IN ==========
+    function openWalkinModal() {
+      selectedWalkinTable = null;
+      document.getElementById('walkinName').value = '';
+      document.getElementById('walkinGuests').value = '2';
+      document.getElementById('walkinNotes').value = '';
+      renderWalkinTableGrid();
+      document.getElementById('walkinModal').classList.add('active');
+    }
+    function closeWalkinModal() {
+      document.getElementById('walkinModal').classList.remove('active');
+    }
+    function renderWalkinTableGrid() {
+      const guests = parseInt(document.getElementById('walkinGuests')?.value) || 2;
+      const container = document.getElementById('walkinTableGrid');
+      const emptyTables = tables.filter(t => t.status === 'empty' && t.capacity >= guests);
+      if (emptyTables.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:1rem">沒有符合條件的空桌</p>';
+        return;
+      }
+      container.innerHTML = emptyTables.map(t => `
+        <button type="button" class="walkin-table-btn ${selectedWalkinTable === t.id ? 'selected' : ''}"
+          onclick="selectWalkinTable('${t.id}')">
+          <div style="font-size:1.5rem">${t.emoji}</div>
+          <div>${t.name}</div>
+          <div class="cap">可容納 ${t.capacity} 人</div>
+        </button>
+      `).join('');
+    }
+    function selectWalkinTable(id) {
+      selectedWalkinTable = selectedWalkinTable === id ? null : id;
+      renderWalkinTableGrid();
+    }
+    function confirmWalkin() {
+      const name = document.getElementById('walkinName').value.trim();
+      const guests = parseInt(document.getElementById('walkinGuests').value);
+      const notes = document.getElementById('walkinNotes').value.trim();
+      if (!name) { showToast('請填寫姓名'); return; }
+      if (!selectedWalkinTable) { showToast('請選擇座位'); return; }
+      const table = tables.find(t => t.id === selectedWalkinTable);
       if (!table) return;
-      document.getElementById('seatStatusId').value = id;
-      document.getElementById('seatNewStatus').value = table.status;
-      document.getElementById('seatStatusNote').value = table.note || '';
-      document.getElementById('seatStatusModal').classList.add('active');
-    }
-    function closeSeatStatusModal() {
-      document.getElementById('seatStatusModal').classList.remove('active');
-      pendingSeatStatus = null;
-    }
-    function updateSeatStatus() {
-      const id = document.getElementById('seatStatusId').value;
-      const newStatus = document.getElementById('seatNewStatus').value;
-      const note = document.getElementById('seatStatusNote').value;
-      const table = tables.find(t => t.id === id);
-      if (table) {
-        // Store pending change for confirmation
-        pendingSeatStatus = { id, newStatus, note, originalStatus: table.status };
-        // Show confirmation dialog
-        const statusLabels = { empty: '空桌', reserved: '已預訂', seated: '已入座' };
-        const confirmed = confirm(`確定要將 ${table.name} 的狀態改為「${statusLabels[newStatus]}」嗎？\n\n按下「確定」才會儲存更動。`);
-        if (confirmed) {
-          applySeatStatusChange();
-        } else {
-          pendingSeatStatus = null;
-          closeSeatStatusModal();
-          showToast('已取消更動');
-        }
-      }
-    }
-    function applySeatStatusChange() {
-      if (!pendingSeatStatus) return;
-      const { id, newStatus, note } = pendingSeatStatus;
-      const table = tables.find(t => t.id === id);
-      if (table) {
-        table.status = newStatus;
-        table.note = note;
-        if (newStatus === 'empty') table.reservationId = null;
-        saveTables();
-        renderSeatMap();
-        updateStats();
-        showToast('座位狀態已更新');
-      }
-      pendingSeatStatus = null;
-      closeSeatStatusModal();
+
+      // Create a walkin record
+      const walkin = {
+        id: 'WALK' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
+        name,
+        guests,
+        tableId: table.id,
+        seatedAt: Date.now(),
+        notes,
+        reservationId: null
+      };
+      walkins.push(walkin);
+      saveWalkins();
+
+      // Update table
+      table.status = 'in-use';
+      table.walkinId = walkin.id;
+      saveTables();
+
+      closeWalkinModal();
+      renderSeatMap();
+      updateStats();
+      showToast(`${name} 已入座 ${table.name}，2小時後自動釋放`);
     }
 
     // ========== RESERVATION CRUD ==========
@@ -817,7 +1122,7 @@
       selectedTable = null;
       selectedTags = [];
       document.querySelectorAll('.table-btn').forEach(b => b.classList.remove('selected'));
-      document.querySelectorAll('[id^="tag"]').forEach(el => el.checked = false);
+      document.querySelectorAll('[id^="tag"]').forEach(el => { if (el.type === 'checkbox') el.checked = false; });
       if (id) {
         const r = reservations.find(res => res.id === id);
         if (r) {
@@ -826,7 +1131,6 @@
           document.getElementById('resName').value = r.name;
           document.getElementById('resPhone').value = r.phone || '';
           document.getElementById('resDate').value = r.date;
-          document.getElementById('resPeriod').value = r.period;
           document.getElementById('resTime').value = r.time;
           document.getElementById('resGuests').value = r.guests;
           document.getElementById('resStatus').value = r.status;
@@ -837,14 +1141,14 @@
             const el = document.getElementById('tag' + tag.charAt(0).toUpperCase() + tag.slice(1));
             if (el) el.checked = true;
           });
-          if (selectedTable) {
-            const btn = document.querySelector(`[data-table="${selectedTable}"]`);
-            if (btn) btn.classList.add('selected');
-          }
-          currentPeriod = r.period;
-          document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-          document.querySelector(`[onclick="setPeriod('${r.period}')"]`).classList.add('active');
           updateTimeOptions();
+          renderTableSelect();
+          if (selectedTable) {
+            setTimeout(() => {
+              const btn = document.querySelector(`[data-table="${selectedTable}"]`);
+              if (btn) btn.classList.add('selected');
+            }, 0);
+          }
         }
       } else {
         document.getElementById('modalTitle').textContent = '新增訂位';
@@ -852,21 +1156,16 @@
         document.getElementById('resName').value = '';
         document.getElementById('resPhone').value = '';
         setTodayDate();
-        // Sync period dropdown with current period
-        document.getElementById('resPeriod').value = currentPeriod;
         updateTimeOptions();
         document.getElementById('resStatus').value = 'confirmed';
         document.getElementById('resNotes').value = '';
-        // Sync period button states
-        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector(`.period-btn[onclick="setPeriod('${currentPeriod}')"]`).classList.add('active');
+        renderTableSelect();
       }
       document.getElementById('resModal').classList.add('active');
     }
     function updateTimeOptions() {
-      const period = document.getElementById('resPeriod').value;
-      const times = period === 'lunch' ? LUNCH_TIMES : DINNER_TIMES;
-      document.getElementById('resTime').innerHTML = times.map(t => `<option value="${t}">${t}</option>`).join('');
+      const select = document.getElementById('resTime');
+      select.innerHTML = ALL_TIMES.map(t => `<option value="${t}">${t}</option>`).join('');
     }
     function toggleTag(tag) {
       const idx = selectedTags.indexOf(tag);
@@ -877,20 +1176,17 @@
       const name = document.getElementById('resName').value.trim();
       const date = document.getElementById('resDate').value;
       const time = document.getElementById('resTime').value;
-      if (!name || !date || !time) {
-        showToast('請填寫必填欄位');
-        return;
-      }
+      if (!name || !date || !time) { showToast('請填寫必填欄位'); return; }
       const id = document.getElementById('resId').value || generateId();
       const existing = reservations.find(r => r.id === id);
       const oldTableId = existing ? existing.tableId : null;
       const newTableId = selectedTable;
+
       const res = {
         id,
         name,
         phone: document.getElementById('resPhone').value.trim(),
         date,
-        period: document.getElementById('resPeriod').value,
         time,
         guests: parseInt(document.getElementById('resGuests').value),
         tableId: newTableId,
@@ -901,35 +1197,40 @@
         createdAt: existing ? existing.createdAt : new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      // Handle table assignment
+
+      // Handle old table release
       if (oldTableId && oldTableId !== newTableId) {
-        const oldTable = tables.find(t => t.id === oldTableId);
-        if (oldTable) {
-          oldTable.reservationId = null;
-          if (oldTable.status !== 'reserved') oldTable.status = 'empty';
+        const old = tables.find(t => t.id === oldTableId);
+        if (old) {
+          old.reservationId = null;
+          old.status = 'empty';
+          // Also check if walkin was using it
+          const oldWalkin = walkins.find(w => w.tableId === oldTableId);
+          if (oldWalkin) { oldWalkin.tableId = null; saveWalkins(); }
         }
       }
+
+      // Handle new table assignment
       if (newTableId) {
         const table = tables.find(t => t.id === newTableId);
         if (table) {
           table.reservationId = id;
-          table.status = res.status === 'seated' ? 'seated' : res.status === 'confirmed' ? 'reserved' : 'empty';
+          table.status = res.status === 'seated' ? 'in-use' : res.status === 'confirmed' ? 'reserved' : 'empty';
         }
       }
+
       if (existing) {
         const idx = reservations.findIndex(r => r.id === id);
         reservations[idx] = res;
       } else {
         reservations.push(res);
       }
-      // Auto complete if status changed to completed and table was assigned
+
       if (res.status === 'completed' && res.tableId) {
         const table = tables.find(t => t.id === res.tableId);
-        if (table) {
-          table.reservationId = null;
-          table.status = 'empty';
-        }
+        if (table) { table.reservationId = null; table.status = 'empty'; }
       }
+
       saveReservations();
       saveTables();
       closeModal();
@@ -940,18 +1241,13 @@
       updateStats();
       showToast(existing ? '已更新訂位' : '已新增訂位');
     }
-    function editReservation(id) {
-      openReservationModal(id);
-    }
+    function editReservation(id) { openReservationModal(id); }
     function deleteReservation(id) {
       if (!confirm('確定要刪除這筆訂位？')) return;
       const res = reservations.find(r => r.id === id);
       if (res && res.tableId) {
         const table = tables.find(t => t.id === res.tableId);
-        if (table) {
-          table.reservationId = null;
-          table.status = 'empty';
-        }
+        if (table) { table.reservationId = null; table.status = 'empty'; }
       }
       reservations = reservations.filter(r => r.id !== id);
       saveReservations();
@@ -965,27 +1261,22 @@
     function seatReservation(id) {
       const res = reservations.find(r => r.id === id);
       if (!res) return;
-      // Find available table
       let availableTable = null;
       if (res.tableId) {
         availableTable = tables.find(t => t.id === res.tableId);
       } else {
         availableTable = tables.find(t => t.capacity >= res.guests && t.status === 'empty');
       }
-      if (!availableTable) {
-        showToast('沒有合適的空位');
-        return;
-      }
-      // Release old table if different
+      if (!availableTable) { showToast('沒有合適的空位'); return; }
       if (res.tableId && res.tableId !== availableTable.id) {
         const old = tables.find(t => t.id === res.tableId);
         if (old) { old.reservationId = null; old.status = 'empty'; }
       }
       res.status = 'seated';
       res.tableId = availableTable.id;
-      res.seatedAt = new Date().toISOString();
+      res.seatedAt = res.seatedAt || new Date().toISOString();
       availableTable.reservationId = id;
-      availableTable.status = 'seated';
+      availableTable.status = 'in-use';
       saveReservations();
       saveTables();
       renderTimeSlots();
@@ -1000,10 +1291,7 @@
       res.status = 'completed';
       if (res.tableId) {
         const table = tables.find(t => t.id === res.tableId);
-        if (table) {
-          table.reservationId = null;
-          table.status = 'empty';
-        }
+        if (table) { table.reservationId = null; table.status = 'empty'; }
       }
       res.tableId = null;
       saveReservations();
@@ -1014,9 +1302,7 @@
       updateStats();
       showToast('已完成用餐');
     }
-    function closeModal() {
-      document.getElementById('resModal').classList.remove('active');
-    }
+    function closeModal() { document.getElementById('resModal').classList.remove('active'); }
 
     // ========== TABLE SELECT ==========
     function renderTableSelect() {
@@ -1025,9 +1311,9 @@
       container.innerHTML = tables.map(t => {
         const disabled = t.capacity < guests;
         const occupied = t.status !== 'empty';
-        return `<button type="button" class="table-btn ${selectedTable === t.id ? 'selected' : ''} ${disabled || occupied ? 'disabled' : ''}" 
-          data-table="${t.id}" onclick="selectTable('${t.id}')" 
-          ${disabled ? 'disabled' : ''} 
+        return `<button type="button" class="table-btn ${selectedTable === t.id ? 'selected' : ''} ${disabled || occupied ? 'disabled' : ''}"
+          data-table="${t.id}" onclick="selectTable('${t.id}')"
+          ${disabled ? 'disabled' : ''}
           title="${disabled ? '人數不足' : occupied ? '已被佔用' : ''}">
           ${t.name}${disabled ? '❌' : occupied ? '🔴' : '🟢'}
         </button>`;
@@ -1046,22 +1332,173 @@
 
     // ========== FILTER ==========
     function filterReservations() {
-      if (document.querySelector('[data-tab].active')?.dataset.tab === 'all') {
-        renderAllReservations();
-      } else {
-        renderReservations();
+      // Clear time filter if search text changes
+      if (!document.getElementById('searchInput').dataset.filterTime) {
+        // intentional
       }
+      if (currentTab === 'all') renderAllReservations();
+      else renderReservations();
     }
+    // Handle time slot clear
+    document.getElementById('searchInput').addEventListener('input', function () {
+      if (!this.value) {
+        delete this.dataset.filterTime;
+        filterReservations();
+      }
+    });
 
     // ========== STATS ==========
     function updateStats() {
       const today = getTodayStr();
       const todayRes = reservations.filter(r => r.date === today && r.status !== 'cancelled' && r.status !== 'noshow');
-      const seated = reservations.filter(r => r.status === 'seated');
-      const available = tables.filter(t => t.status === 'empty').length;
+      const inUse = tables.filter(t => getTableStatus(t) === 'in-use').length;
+      const available = tables.filter(t => getTableStatus(t) === 'empty').length;
       document.getElementById('statTotal').textContent = todayRes.length;
-      document.getElementById('statSeated').textContent = seated.length;
+      document.getElementById('statSeated').textContent = inUse;
       document.getElementById('statAvailable').textContent = available;
+    }
+
+    // ========== DEPLOY TAB ==========
+    function initDeploy() {
+      // Always start fresh from current tables (pendingTables holds unsaved changes)
+      if (pendingTables === null) {
+        pendingTables = JSON.parse(JSON.stringify(tables));
+      }
+      renderDeployMap();
+      updatePendingBanner();
+    }
+
+    function getWorkingTables() {
+      return pendingTables;
+    }
+
+    function renderDeployMap() {
+      const container = document.getElementById('deploySeatMap');
+      const working = getWorkingTables();
+      container.innerHTML = working.map(t => `
+        <div class="deploy-seat"
+          draggable="true"
+          data-deploy-id="${t.id}"
+          ondragstart="onDeployDragStart(event, '${t.id}')"
+          ondragover="onDeployDragOver(event)"
+          ondragleave="onDeployDragLeave(event)"
+          ondrop="onDeployDrop(event, '${t.id}')"
+          ondragend="onDeployDragEnd(event)">
+          <div class="emoji">${t.emoji}</div>
+          <div class="name">${escapeHtml(t.name)}</div>
+          <div class="cap">
+            <input type="number" class="cap-edit" value="${t.capacity}" min="1" max="30"
+              onchange="updateDeployCapacity('${t.id}', this.value)"
+              onclick="event.stopPropagation()">
+            人
+          </div>
+          <button class="delete-btn" onclick="event.stopPropagation();deleteDeployTable('${t.id}')" title="刪除桌子">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function onDeployDragStart(e, id) {
+      draggedTableId = id;
+      e.target.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    }
+    function onDeployDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      e.currentTarget.classList.add('drag-over');
+    }
+    function onDeployDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+    function onDeployDrop(e, targetId) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
+      if (!draggedTableId || draggedTableId === targetId) return;
+
+      // Swap positions of dragged and target
+      const working = getWorkingTables();
+      const dragged = working.find(t => t.id === draggedTableId);
+      const target = working.find(t => t.id === targetId);
+      if (dragged && target) {
+        const tmpX = dragged.x, tmpY = dragged.y;
+        dragged.x = target.x;
+        dragged.y = target.y;
+        target.x = tmpX;
+        target.y = tmpY;
+        pendingTables = working;
+        renderDeployMap();
+        updatePendingBanner();
+      }
+    }
+    function onDeployDragEnd(e) {
+      e.target.classList.remove('dragging');
+      draggedTableId = null;
+    }
+
+    function updateDeployCapacity(id, val) {
+      const t = getWorkingTables().find(t => t.id === id);
+      if (t) {
+        t.capacity = parseInt(val) || 2;
+        updatePendingBanner();
+      }
+    }
+
+    function deleteDeployTable(id) {
+      const working = getWorkingTables();
+      const t = working.find(t => t.id === id);
+      if (!t) return;
+      if (!confirm(`確定要刪除「${t.name}」嗎？`)) return;
+      pendingTables = working.filter(t => t.id !== id);
+      renderDeployMap();
+      updatePendingBanner();
+    }
+
+    function addNewTable() {
+      const working = getWorkingTables();
+      const newId = 'NEW' + Date.now().toString(36);
+      const maxNum = working.filter(t => t.id.startsWith('T')).length + 1;
+      const newTable = {
+        id: newId,
+        name: `${maxNum}號桌`,
+        capacity: 4,
+        emoji: '🪑',
+        status: 'empty',
+        note: '',
+        reservationId: null,
+        x: working.length % 4,
+        y: Math.floor(working.length / 4)
+      };
+      pendingTables = [...working, newTable];
+      renderDeployMap();
+      updatePendingBanner();
+      showToast(`已新增「${newTable.name}」，請記得點「確認」`);
+    }
+
+    function updatePendingBanner() {
+      const banner = document.getElementById('pendingChangesBanner');
+      const isDirty = JSON.stringify(pendingTables) !== JSON.stringify(tables);
+      if (isDirty) banner.classList.remove('hidden');
+      else banner.classList.add('hidden');
+    }
+
+    function confirmDeployChanges() {
+      tables = JSON.parse(JSON.stringify(pendingTables));
+      saveTables();
+      pendingTables = null;
+      renderSeatMap();
+      renderTableSelect();
+      updateStats();
+      initDeploy();
+      showToast('座位配置已確認儲存');
+    }
+
+    function discardDeployChanges() {
+      if (pendingTables !== null && JSON.stringify(pendingTables) !== JSON.stringify(tables)) {
+        if (!confirm('確定要捨棄所有更動？')) return;
+      }
+      pendingTables = null;
+      initDeploy();
+      showToast('已捨棄更動');
     }
 
     // ========== UTILS ==========
@@ -1088,25 +1525,15 @@
     }
 
     // ========== EVENTS ==========
-    document.getElementById('resPeriod').addEventListener('change', updateTimeOptions);
     document.getElementById('resGuests').addEventListener('change', renderTableSelect);
+    document.getElementById('walkinGuests').addEventListener('change', renderWalkinTableGrid);
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
         closeModal();
         closeSeatModal();
-        closeSeatStatusModal();
+        closeWalkinModal();
       }
     });
-
-    // ========== AUTO REFRESH ==========
-    setInterval(() => {
-      if (document.querySelector('[data-tab].active')?.dataset.tab === 'seats') {
-        renderSeatMap();
-      }
-      if (document.querySelector('[data-tab].active')?.dataset.tab !== 'all') {
-        updateStats();
-      }
-    }, 60000);
 
     init();
   </script>
