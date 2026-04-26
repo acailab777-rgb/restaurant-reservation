@@ -343,17 +343,17 @@
       background: #e8f5e9;
       border: 2px solid var(--success);
       border-radius: 12px;
-      padding: 0.75rem;
+      padding: 0.4rem;
       text-align: center;
       cursor: grab;
       user-select: none;
       transition: box-shadow 0.2s;
-      min-height: 45px;
+      min-height: 25px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 0.25rem;
+      gap: 0.15rem;
     }
     .deploy-seat:active { cursor: grabbing; }
     .deploy-seat.drag-over { box-shadow: 0 0 0 3px var(--info); background: #e3f2fd; }
@@ -660,16 +660,16 @@
 
     function generateTables() {
       tables = [
-        { id: 'T1', name: '1號桌', capacity: 2, emoji: '🍽️', status: 'in-use', note: '', reservationId: null, x: 0, y: 0 },
-        { id: 'T2', name: '2號桌', capacity: 2, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 1, y: 0 },
-        { id: 'T3', name: '3號桌', capacity: 4, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 2, y: 0 },
-        { id: 'T4', name: '4號桌', capacity: 4, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 3, y: 0 },
-        { id: 'T5', name: '5號桌', capacity: 6, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 0, y: 1 },
-        { id: 'T6', name: '6號桌', capacity: 6, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 1, y: 1 },
-        { id: 'T7', name: '7號桌', capacity: 8, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 2, y: 1 },
-        { id: 'T8', name: '8號桌', capacity: 10, emoji: '🍽️', status: 'empty', note: '', reservationId: null, x: 3, y: 1 },
-        { id: 'B1', name: '包廂1', capacity: 12, emoji: '🚪', status: 'empty', note: '', reservationId: null, x: 0, y: 2 },
-        { id: 'B2', name: '包廂2', capacity: 8, emoji: '🚪', status: 'empty', note: '', reservationId: null, x: 1, y: 2 },
+        { id: 'T1', name: '1號桌', capacity: 2, status: 'in-use', note: '', reservationId: null, x: 0, y: 0 },
+        { id: 'T2', name: '2號桌', capacity: 2, status: 'empty', note: '', reservationId: null, x: 1, y: 0 },
+        { id: 'T3', name: '3號桌', capacity: 4, status: 'empty', note: '', reservationId: null, x: 2, y: 0 },
+        { id: 'T4', name: '4號桌', capacity: 4, status: 'empty', note: '', reservationId: null, x: 3, y: 0 },
+        { id: 'T5', name: '5號桌', capacity: 6, status: 'empty', note: '', reservationId: null, x: 0, y: 1 },
+        { id: 'T6', name: '6號桌', capacity: 6, status: 'empty', note: '', reservationId: null, x: 1, y: 1 },
+        { id: 'T7', name: '7號桌', capacity: 8, status: 'empty', note: '', reservationId: null, x: 2, y: 1 },
+        { id: 'T8', name: '8號桌', capacity: 10, status: 'empty', note: '', reservationId: null, x: 3, y: 1 },
+        { id: 'B1', name: '包廂1', capacity: 12, status: 'empty', note: '', reservationId: null, x: 0, y: 2 },
+        { id: 'B2', name: '包廂2', capacity: 8, status: 'empty', note: '', reservationId: null, x: 1, y: 2 },
       ];
       saveTables();
     }
@@ -732,7 +732,7 @@
       const now = Date.now();
       let changed = false;
       walkins = walkins.filter(w => {
-        const expiry = w.seatedAt + (2 * 60 * 60 * 1000); // 2 hours
+        const expiry = w.seatedAt + (119 * 60 * 1000); // 1hr 59min
         if (now >= expiry) {
           // Release table
           const table = tables.find(t => t.id === w.tableId);
@@ -755,7 +755,7 @@
     }
 
     function getWalkinRemaining(walkin) {
-      const expiry = walkin.seatedAt + (2 * 60 * 60 * 1000);
+      const expiry = walkin.seatedAt + (119 * 60 * 1000);
       const remaining = Math.max(0, expiry - Date.now());
       const mins = Math.floor(remaining / 60000);
       const hrs = Math.floor(mins / 60);
@@ -903,7 +903,7 @@
               </div>
               <div class="details">
                 📅 ${r.date} ${r.time}｜👥 ${r.guests}人
-                ${table ? `｜${table.emoji} ${table.name}` : ''}
+                ${table ? `｜${table.name}` : ''}
                 ${r.phone ? `｜📞 ${r.phone}` : ''}
                 ${seatedDuration ? `｜⏱️ 已坐 ${seatedDuration}` : ''}
               </div>
@@ -962,7 +962,6 @@
 
         return `
           <div class="seat ${status} ${selectedTable === t.id ? 'selected' : ''}" onclick="selectSeat('${t.id}')">
-            <div class="emoji">${t.emoji}</div>
             <div class="name">${t.name}</div>
             <div class="capacity">${t.capacity}人</div>
             ${status === 'in-use' ? `
@@ -1070,7 +1069,6 @@
       container.innerHTML = emptyTables.map(t => `
         <button type="button" class="walkin-table-btn ${selectedWalkinTable === t.id ? 'selected' : ''}"
           onclick="selectWalkinTable('${t.id}')">
-          <div style="font-size:1.5rem">${t.emoji}</div>
           <div>${t.name}</div>
           <div class="cap">可容納 ${t.capacity} 人</div>
         </button>
@@ -1110,7 +1108,7 @@
       closeWalkinModal();
       renderSeatMap();
       updateStats();
-      showToast(`${name} 已入座 ${table.name}，2小時後自動釋放`);
+      showToast(`${name} 已入座 ${table.name}，1小時59分後自動釋放`);
     }
 
     // ========== RESERVATION CRUD ==========
@@ -1177,14 +1175,14 @@
       // Overlap check: 2-hour dining window on same table
       if (selectedTable) {
         const newStart = timeToMinutes(time);
-        const newEnd = newStart + 120; // 2 hours
+        const newEnd = newStart + 119; // 1hr 59min
         const overlap = reservations.some(r =>
           r.id !== document.getElementById('resId').value &&
           r.tableId === selectedTable &&
           r.date === date &&
           r.status !== 'cancelled' &&
           r.status !== 'noshow' &&
-          isTimeOverlap(newStart, newEnd, timeToMinutes(r.time), timeToMinutes(r.time) + 120)
+          isTimeOverlap(newStart, newEnd, timeToMinutes(r.time), timeToMinutes(r.time) + 119)
         );
         if (overlap) {
           alert('此桌在該時段已有訂位');
@@ -1321,23 +1319,73 @@
     function closeModal() { document.getElementById('resModal').classList.remove('active'); }
 
     // ========== TABLE SELECT ==========
+    function isTableAvailableForReservation(tableId, date, timeMinutes) {
+      // Check walk-in conflict
+      const walkin = walkins.find(w => w.tableId === tableId);
+      if (walkin) {
+        const walkinExpiry = walkin.seatedAt + (119 * 60 * 1000);
+        // If reservation is today, compare times. If in future, walkin will have expired.
+        const today = getTodayStr();
+        if (date === today) {
+          // Convert timeMinutes to absolute ms for today
+          const now = new Date();
+          const resStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(timeMinutes / 60), timeMinutes % 60).getTime();
+          if (resStart < walkinExpiry) {
+            return { available: false, reason: '使用中' };
+          }
+        }
+      }
+      // Check reservation overlap (1hr 59min = 119 min window)
+      const newStart = timeMinutes;
+      const newEnd = timeMinutes + 119;
+      const hasOverlap = reservations.some(r =>
+        r.tableId === tableId &&
+        r.date === date &&
+        r.status !== 'cancelled' &&
+        r.status !== 'noshow' &&
+        isTimeOverlap(newStart, newEnd, timeToMinutes(r.time), timeToMinutes(r.time) + 119)
+      );
+      if (hasOverlap) {
+        return { available: false, reason: '已有訂位' };
+      }
+      return { available: true, reason: '' };
+    }
+
     function renderTableSelect() {
       const container = document.getElementById('tableSelect');
       const guests = parseInt(document.getElementById('resGuests')?.value) || 2;
+      const date = document.getElementById('resDate')?.value;
+      const time = document.getElementById('resTime')?.value;
+      const timeMinutes = time ? timeToMinutes(time) : 0;
       container.innerHTML = tables.map(t => {
         const disabled = t.capacity < guests;
+        let unavailable = false;
+        let reason = '';
+        if (!disabled && date && timeMinutes >= 0) {
+          const avail = isTableAvailableForReservation(t.id, date, timeMinutes);
+          unavailable = !avail.available;
+          reason = avail.reason;
+        }
         const occupied = t.status !== 'empty';
-        return `<button type="button" class="table-btn ${selectedTable === t.id ? 'selected' : ''} ${disabled || occupied ? 'disabled' : ''}"
+        return `<button type="button" class="table-btn ${selectedTable === t.id ? 'selected' : ''} ${disabled || unavailable ? 'disabled' : ''}"
           data-table="${t.id}" onclick="selectTable('${t.id}')"
           ${disabled ? 'disabled' : ''}
-          title="${disabled ? '人數不足' : occupied ? '已被佔用' : ''}">
-          ${t.name}${disabled ? '❌' : occupied ? '🔴' : '🟢'}
+          title="${disabled ? '人數不足' : unavailable ? reason : occupied ? '已被佔用' : ''}">
+          ${t.name}${disabled ? '❌' : unavailable ? '🔴' : occupied ? '🔴' : '🟢'}
         </button>`;
       }).join('');
     }
     function selectTable(id) {
       const table = tables.find(t => t.id === id);
-      if (!table || table.status !== 'empty') return;
+      if (!table) return;
+      const guests = parseInt(document.getElementById('resGuests')?.value) || 2;
+      if (table.capacity < guests) return;
+      const date = document.getElementById('resDate')?.value;
+      const time = document.getElementById('resTime')?.value;
+      if (!date || !time) return;
+      const timeMinutes = timeToMinutes(time);
+      const avail = isTableAvailableForReservation(id, date, timeMinutes);
+      if (!avail.available) return;
       selectedTable = selectedTable === id ? null : id;
       document.querySelectorAll('.table-btn').forEach(b => b.classList.remove('selected'));
       if (selectedTable) {
@@ -1400,7 +1448,6 @@
           ondragleave="onDeployDragLeave(event)"
           ondrop="onDeployDrop(event, '${t.id}')"
           ondragend="onDeployDragEnd(event)">
-          <div class="emoji">${t.emoji}</div>
           <div class="name">${escapeHtml(t.name)}</div>
           <div class="cap">
             <input type="number" class="cap-edit" value="${t.capacity}" min="1" max="30"
@@ -1477,7 +1524,6 @@
         id: newId,
         name: `${maxNum}號桌`,
         capacity: 4,
-        emoji: '🍽️',
         status: 'empty',
         note: '',
         reservationId: null,
@@ -1549,6 +1595,8 @@
 
     // ========== EVENTS ==========
     document.getElementById('resGuests').addEventListener('change', renderTableSelect);
+    document.getElementById('resDate').addEventListener('change', renderTableSelect);
+    document.getElementById('resTime').addEventListener('change', renderTableSelect);
     document.getElementById('walkinGuests').addEventListener('change', renderWalkinTableGrid);
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
