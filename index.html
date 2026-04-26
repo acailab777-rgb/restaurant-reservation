@@ -452,6 +452,7 @@
       <div id="seatDetailContent"></div>
       <div class="modal-actions">
         <button class="btn btn-outline" onclick="closeSeatModal()">關閉</button>
+        <button class="btn btn-outline" onclick="editSeatStatus()">編輯狀態</button>
         <button class="btn btn-warning" onclick="clearSeatAssignment()">釋放座位</button>
       </div>
     </div>
@@ -589,7 +590,14 @@
       document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
       document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
       document.getElementById(`tab-${tab}`).style.display = 'block';
-      if (tab === 'all') renderAllReservations();
+      if (tab === 'today') {
+        renderTimeSlots();
+        renderReservations();
+      } else if (tab === 'seats') {
+        renderSeatMap();
+      } else if (tab === 'all') {
+        renderAllReservations();
+      }
     }
 
     // ========== PERIOD ==========
@@ -723,9 +731,16 @@
         ` : ''}
       `;
       document.getElementById('seatModal').classList.add('active');
+      // Store current table id for edit access
+      document.getElementById('seatId').value = id;
     }
     function closeSeatModal() {
       document.getElementById('seatModal').classList.remove('active');
+    }
+    function editSeatStatus() {
+      const id = document.getElementById('seatId').value;
+      closeSeatModal();
+      openSeatStatusModal(id);
     }
     function clearSeatAssignment() {
       const id = document.getElementById('seatId').value;
@@ -747,6 +762,7 @@
     }
 
     // ========== SEAT STATUS EDIT ==========
+    let pendingSeatStatus = null;
     function openSeatStatusModal(id) {
       const table = tables.find(t => t.id === id);
       if (!table) return;
@@ -757,11 +773,31 @@
     }
     function closeSeatStatusModal() {
       document.getElementById('seatStatusModal').classList.remove('active');
+      pendingSeatStatus = null;
     }
     function updateSeatStatus() {
       const id = document.getElementById('seatStatusId').value;
       const newStatus = document.getElementById('seatNewStatus').value;
       const note = document.getElementById('seatStatusNote').value;
+      const table = tables.find(t => t.id === id);
+      if (table) {
+        // Store pending change for confirmation
+        pendingSeatStatus = { id, newStatus, note, originalStatus: table.status };
+        // Show confirmation dialog
+        const statusLabels = { empty: '空桌', reserved: '已預訂', seated: '已入座' };
+        const confirmed = confirm(`確定要將 ${table.name} 的狀態改為「${statusLabels[newStatus]}」嗎？\n\n按下「確定」才會儲存更動。`);
+        if (confirmed) {
+          applySeatStatusChange();
+        } else {
+          pendingSeatStatus = null;
+          closeSeatStatusModal();
+          showToast('已取消更動');
+        }
+      }
+    }
+    function applySeatStatusChange() {
+      if (!pendingSeatStatus) return;
+      const { id, newStatus, note } = pendingSeatStatus;
       const table = tables.find(t => t.id === id);
       if (table) {
         table.status = newStatus;
@@ -772,6 +808,7 @@
         updateStats();
         showToast('座位狀態已更新');
       }
+      pendingSeatStatus = null;
       closeSeatStatusModal();
     }
 
@@ -815,9 +852,14 @@
         document.getElementById('resName').value = '';
         document.getElementById('resPhone').value = '';
         setTodayDate();
+        // Sync period dropdown with current period
+        document.getElementById('resPeriod').value = currentPeriod;
         updateTimeOptions();
         document.getElementById('resStatus').value = 'confirmed';
         document.getElementById('resNotes').value = '';
+        // Sync period button states
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.period-btn[onclick="setPeriod('${currentPeriod}')"]`).classList.add('active');
       }
       document.getElementById('resModal').classList.add('active');
     }
