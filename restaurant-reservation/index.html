@@ -144,6 +144,7 @@
     .seat.empty { background: #e8f5e9; border-color: var(--success); }
     .seat.in-use { background: #ffebee; border-color: var(--accent); }
     .seat.reserved-soon { background: #fff3e0; border-color: var(--warning); }
+    .seat.expired { background: #f5f5f5; border-color: var(--border); opacity: 0.7; }
     .seat.selected { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(231,76,60,0.3); }
     .seat .emoji { font-size: 1.5rem; margin-bottom: 0.25rem; }
     .seat .name { font-weight: 600; }
@@ -404,6 +405,7 @@
       .stat-value { font-size: 1.2rem; }
       .header-row { flex-direction: column; align-items: flex-start; }
       .table-grid { grid-template-columns: repeat(3, 1fr); }
+      .home-bottom-grid { grid-template-columns: 1fr !important; }
     }
   </style>
 </head>
@@ -445,11 +447,19 @@
         <button class="btn btn-success" onclick="openWalkinModal()">🍽️ 現場候位</button>
       </div>
       <div id="seatMap" class="seat-map"></div>
-      <div class="card" style="margin-top:1.5rem">
-        <div class="card-header">
-          <span class="card-title">📋 所有訂位記錄</span>
+      <div style="display:grid;grid-template-columns:300px 1fr;gap:1rem;margin-top:1.5rem" class="home-bottom-grid">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">⏳ 現場候位清單</span>
+          </div>
+          <div id="walkinList"></div>
         </div>
-        <div id="homeAllReservations"></div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📋 所有訂位記錄</span>
+          </div>
+          <div id="homeAllReservations"></div>
+        </div>
       </div>
     </div>
 
@@ -607,6 +617,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn btn-outline" onclick="closeWalkinModal()">取消</button>
+        <button class="btn btn-secondary" onclick="addToWaitlist()">加入候位清單</button>
         <button class="btn btn-success" onclick="confirmWalkin()">確認入座</button>
       </div>
     </div>
@@ -652,6 +663,7 @@
       renderTimeSlots();
       renderSeatMap();
       renderReservations();
+      renderWalkinList();
       updateStats();
       renderTableSelect();
       initDeploy();
@@ -710,10 +722,14 @@
 
     // ========== TIMERS ==========
     function startTimers() {
-      // Check every minute for walkin expiry
+      // Check every minute for walkin and seated-reservation expiry
       setInterval(() => {
         checkWalkinExpiry();
-        if (currentTab === 'seats') renderSeatMap();
+        checkSeatedReservationExpiry();
+        if (currentTab === 'seats') {
+          renderSeatMap();
+          renderWalkinList();
+        }
         if (currentTab === 'today') updateStats();
       }, 60000);
 
@@ -734,10 +750,10 @@
       walkins = walkins.filter(w => {
         const expiry = w.seatedAt + (119 * 60 * 1000); // 1hr 59min
         if (now >= expiry) {
-          // Release table
+          // Mark table as expired (not empty — needs manual release)
           const table = tables.find(t => t.id === w.tableId);
           if (table) {
-            table.status = 'empty';
+            table.status = 'expired';
             table.walkinId = null;
             table.reservationId = null;
           }
@@ -748,6 +764,33 @@
       });
       if (changed) {
         saveWalkins();
+        saveTables();
+        renderSeatMap();
+        updateStats();
+      }
+    }
+
+    function checkSeatedReservationExpiry() {
+      const now = Date.now();
+      let changed = false;
+      reservations.forEach(res => {
+        if (res.status === 'seated' && res.seatedAt) {
+          const expiry = new Date(res.seatedAt).getTime() + (119 * 60 * 1000); // 1hr 59min
+          if (now >= expiry) {
+            const table = tables.find(t => t.id === res.tableId);
+            if (table) {
+              table.status = 'expired';
+              table.reservationId = null;
+              table.walkinId = null;
+            }
+            res.tableId = null;
+            res.status = 'completed';
+            changed = true;
+          }
+        }
+      });
+      if (changed) {
+        saveReservations();
         saveTables();
         renderSeatMap();
         updateStats();
@@ -845,6 +888,7 @@
         );
       }
       renderReservationList(filtered, 'homeAllReservations');
+      renderWalkinList();
     }
     function filterByTime(time) {
       const searchInput = document.getElementById('searchInput');
@@ -928,6 +972,7 @@
 
     // ========== SEAT MAP ==========
     function getTableStatus(table) {
+      if (table.status === 'expired') return 'expired';
       const now = new Date();
       const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
 
@@ -968,6 +1013,7 @@
               <div class="time-info">👤${escapeHtml(displayName)}</div>
               <div class="timer">⏱️${timerDisplay}</div>
             ` : ''}
+            ${status === 'expired' ? `<div class="time-info">⏰已過期</div>` : ''}
             ${status === 'reserved-soon' ? `<div class="time-info">🔔即將來店</div>` : ''}
           </div>
         `;
@@ -984,11 +1030,19 @@
       const walkin = walkins.find(w => w.tableId === id);
       const seatedRes = reservations.find(r => r.id === table.reservationId && r.status === 'seated');
 
+      // Find nearest upcoming reservation for this table
+      const now = new Date();
+      const upcomingForTable = reservations
+        .filter(r => r.tableId === id && r.status === 'confirmed' && new Date(`${r.date}T${r.time}`) > now)
+        .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+      const nearestUpcoming = upcomingForTable[0] || null;
+
       let content = `
         <p><strong>人數：</strong>${table.capacity}人</p>
         <p><strong>狀態：</strong>${
           status === 'empty' ? '空桌 🟢' :
           status === 'in-use' ? '使用中 🔴' :
+          status === 'expired' ? '已過期（待釋放）⚪' :
           '即將來店 🟡'
         }</p>
         ${status === 'in-use' && walkin ? `
@@ -1008,9 +1062,18 @@
           <p><strong>時間：</strong>${seatedRes.date} ${seatedRes.time}</p>
           ${seatedRes.notes ? `<p><strong>備註：</strong>${escapeHtml(seatedRes.notes)}</p>` : ''}
         ` : ''}
+        ${nearestUpcoming ? `
+          <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
+          <p><strong>📅 近期訂位</strong></p>
+          <p><strong>姓名：</strong>${escapeHtml(nearestUpcoming.name)}</p>
+          <p><strong>日期：</strong>${nearestUpcoming.date}</p>
+          <p><strong>時間：</strong>${nearestUpcoming.time}</p>
+          <p><strong>人數：</strong>${nearestUpcoming.guests}人</p>
+          <p><strong>狀態：</strong><span class="status-badge ${nearestUpcoming.status}">${getStatusLabel(nearestUpcoming.status)}</span></p>
+        ` : ''}
       `;
       document.getElementById('seatDetailContent').innerHTML = content;
-      document.getElementById('releaseSeatBtn').style.display = (status === 'in-use') ? '' : 'none';
+      document.getElementById('releaseSeatBtn').style.display = (status === 'in-use' || status === 'expired') ? '' : 'none';
       document.getElementById('seatModal').classList.add('active');
     }
     function closeSeatModal() { document.getElementById('seatModal').classList.remove('active'); }
@@ -1038,10 +1101,12 @@
 
       table.reservationId = null;
       table.walkinId = null;
-      table.status = 'empty';
+      table.status = 'empty'; // releases even expired tables
       saveTables();
       closeSeatModal();
       renderSeatMap();
+      renderHomeAllReservations();
+      renderWalkinList();
       updateStats();
       showToast('已釋放座位');
     }
@@ -1107,8 +1172,83 @@
 
       closeWalkinModal();
       renderSeatMap();
+      renderWalkinList();
+      renderHomeAllReservations();
       updateStats();
       showToast(`${name} 已入座 ${table.name}，1小時59分後自動釋放`);
+    }
+
+    function renderWalkinList() {
+      const container = document.getElementById('walkinList');
+      if (!container) return;
+      // Sort by created time (earliest first)
+      const sorted = [...walkins].sort((a, b) => a.seatedAt - b.seatedAt);
+      if (sorted.length === 0) {
+        container.innerHTML = `<div class="empty-state" style="padding:1rem"><div class="emoji" style="font-size:1.5rem">⏳</div><p style="font-size:0.85rem">目前無現場候位</p></div>`;
+        return;
+      }
+      container.innerHTML = sorted.map(w => {
+        const waitedMs = Date.now() - w.seatedAt;
+        const waitedMins = Math.floor(waitedMs / 60000);
+        const waitedHrs = Math.floor(waitedMins / 60);
+        const waitedStr = waitedHrs > 0 ? `${waitedHrs}小時${waitedMins % 60}分鐘` : `${waitedMins}分鐘`;
+        return `
+          <div class="res-item" style="border-left-color:var(--warning)">
+            <div class="info">
+              <div class="name">${escapeHtml(w.name)} <span style="font-size:0.75rem;color:var(--text-light)">${w.guests}人</span></div>
+              <div class="details">⏱️ 已等待 ${waitedStr}</div>
+              ${w.notes ? `<div class="details" style="font-size:0.8rem">💬 ${escapeHtml(w.notes)}</div>` : ''}
+            </div>
+            <div class="actions">
+              <button class="btn btn-sm btn-danger" onclick="removeWalkin('${w.id}')" style="font-size:0.7rem">移除</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function removeWalkin(id) {
+      if (!confirm('確定要移除此候位？')) return;
+      const walkin = walkins.find(w => w.id === id);
+      if (walkin && walkin.tableId) {
+        const table = tables.find(t => t.id === walkin.tableId);
+        if (table) {
+          table.status = 'empty';
+          table.walkinId = null;
+          table.reservationId = null;
+          saveTables();
+        }
+      }
+      walkins = walkins.filter(w => w.id !== id);
+      saveWalkins();
+      renderWalkinList();
+      renderSeatMap();
+      updateStats();
+      showToast('已移除候位');
+    }
+
+    function addToWaitlist() {
+      const name = document.getElementById('walkinName').value.trim();
+      const guests = parseInt(document.getElementById('walkinGuests').value);
+      const notes = document.getElementById('walkinNotes').value.trim();
+      if (!name) { showToast('請填寫姓名'); return; }
+
+      const walkin = {
+        id: 'WALK' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
+        name,
+        guests,
+        tableId: null, // no table assigned
+        seatedAt: Date.now(), // used as queue time
+        notes,
+        reservationId: null
+      };
+      walkins.push(walkin);
+      saveWalkins();
+      closeWalkinModal();
+      renderWalkinList();
+      renderSeatMap();
+      updateStats();
+      showToast(`${name} 已加入候位清單`);
     }
 
     // ========== RESERVATION CRUD ==========
@@ -1250,6 +1390,7 @@
       renderSeatMap();
       renderReservations();
       renderHomeAllReservations();
+      renderWalkinList();
       renderTableSelect();
       updateStats();
       showToast(existing ? '已更新訂位' : '已新增訂位');
@@ -1269,6 +1410,7 @@
       renderSeatMap();
       renderReservations();
       renderHomeAllReservations();
+      renderWalkinList();
       updateStats();
       showToast('已刪除訂位');
     }
@@ -1296,6 +1438,7 @@
       renderSeatMap();
       renderReservations();
       renderHomeAllReservations();
+      renderWalkinList();
       updateStats();
       showToast(`${res.name} 已入座 ${availableTable.name}`);
     }
@@ -1313,6 +1456,7 @@
       renderSeatMap();
       renderReservations();
       renderHomeAllReservations();
+      renderWalkinList();
       updateStats();
       showToast('已完成用餐');
     }
@@ -1320,6 +1464,11 @@
 
     // ========== TABLE SELECT ==========
     function isTableAvailableForReservation(tableId, date, timeMinutes) {
+      const table = tables.find(t => t.id === tableId);
+      if (!table) return { available: false, reason: '桌子不存在' };
+      // Expired tables cannot be selected
+      if (table.status === 'expired') return { available: false, reason: '已過期待釋放' };
+
       // Check walk-in conflict
       const walkin = walkins.find(w => w.tableId === tableId);
       if (walkin) {
