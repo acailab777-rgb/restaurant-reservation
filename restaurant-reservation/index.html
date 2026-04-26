@@ -1226,7 +1226,6 @@
 
       const nearestUpcoming = allForTable.find(r => r.status === 'confirmed' && new Date(`${r.date}T${r.time}`) > now) || null;
       const noshowRes = allForTable.find(r => r.status === 'noshow') || null;
-      const seatedRes = reservations.find(r => r.id === table.reservationId && r.status === 'seated') || null;
 
       let content = `
         <p><strong>人數：</strong>${table.capacity}人</p>
