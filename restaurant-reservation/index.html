@@ -1154,7 +1154,7 @@
               <div class="timer">⏱️${timerDisplay}</div>
             ` : ''}
             ${status === 'expired' ? `<div class="time-info">⏰已過期</div>` : ''}
-            ${status === 'reserved-soon' ? `<div class="time-info">🔔即將來店</div>` : ''}
+            ${status === 'reserved-soon' ? `<div class="time-info">🔔已訂位</div>` : ''}
           </div>
         `;
       }).join('');
@@ -1183,7 +1183,7 @@
           status === 'empty' ? '空桌 🟢' :
           status === 'in-use' ? '使用中 🔴' :
           status === 'expired' ? '已過期（待釋放）⚪' :
-          '即將來店 🟡'
+          '已訂位 🟡'
         }</p>
         ${status === 'in-use' && walkin ? `
           <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
@@ -1690,13 +1690,16 @@
       saveReservations();
       saveTables();
       closeModal();
-      renderTimeSlots();
-      renderSeatMap();
-      renderReservations();
-      renderHomeAllReservations();
-      renderWalkinList();
-      renderTableSelect();
-      updateStats();
+      // Defer render to ensure modal has fully closed before updating DOM
+      setTimeout(() => {
+        renderTimeSlots();
+        renderSeatMap();
+        renderReservations();
+        renderHomeAllReservations();
+        renderWalkinList();
+        renderTableSelect();
+        updateStats();
+      }, 50);
       showToast(existing ? '已更新訂位' : '已新增訂位');
     }
     function editReservation(id) { openReservationModal(id); }
