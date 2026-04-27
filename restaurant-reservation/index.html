@@ -903,7 +903,7 @@
       return hrs > 0 ? `${hrs}:${String(m).padStart(2, '0')}` : `${m}:${String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0')}`;
     }
 
-    function updateAllTimers() {
+    function updateAllTimers() { console.log("[TIMER] FIRED at " + new Date().toISOString());
       const now = Date.now();
       let mapChanged = false;
       // DEBUG: log every 10 seconds that timer is running
