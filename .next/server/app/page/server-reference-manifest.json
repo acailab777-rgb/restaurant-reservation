@@ -1,0 +1,89 @@
+{
+  "node": {
+    "60579332ee6510c181a5bf5ed3351cb76e746efd93": {
+      "workers": {
+        "app/page": {
+          "moduleId": 81553,
+          "async": false,
+          "exportedName": "createTable",
+          "filename": "app/actions/tables.ts"
+        }
+      },
+      "exportedName": "createTable",
+      "filename": "app/actions/tables.ts"
+    },
+    "70d184be2a900ee2e2d0b7b5cfe5dda6d36770e43d": {
+      "workers": {
+        "app/page": {
+          "moduleId": 81553,
+          "async": false,
+          "exportedName": "updateTable",
+          "filename": "app/actions/tables.ts"
+        }
+      },
+      "exportedName": "updateTable",
+      "filename": "app/actions/tables.ts"
+    },
+    "404fa4b46744994ec5c0ac0e927f017a6430301d40": {
+      "workers": {
+        "app/page": {
+          "moduleId": 81553,
+          "async": false,
+          "exportedName": "deleteTable",
+          "filename": "app/actions/tables.ts"
+        }
+      },
+      "exportedName": "deleteTable",
+      "filename": "app/actions/tables.ts"
+    },
+    "40175c136d59e889ba76859365c45de5b28dad206d": {
+      "workers": {
+        "app/page": {
+          "moduleId": 81553,
+          "async": false,
+          "exportedName": "createBooking",
+          "filename": "app/actions/bookings.ts"
+        }
+      },
+      "exportedName": "createBooking",
+      "filename": "app/actions/bookings.ts"
+    },
+    "602abc97d9c65a486959c01584c186a96f6bfda887": {
+      "workers": {
+        "app/page": {
+          "moduleId": 81553,
+          "async": false,
+          "exportedName": "assignTable",
+          "filename": "app/actions/bookings.ts"
+        }
+      },
+      "exportedName": "assignTable",
+      "filename": "app/actions/bookings.ts"
+    },
+    "406c50d9911bf8e3d87055f650f7722f0050e4f149": {
+      "workers": {
+        "app/page": {
+          "moduleId": 81553,
+          "async": false,
+          "exportedName": "returnToWaitlist",
+          "filename": "app/actions/bookings.ts"
+        }
+      },
+      "exportedName": "returnToWaitlist",
+      "filename": "app/actions/bookings.ts"
+    },
+    "404e6d3170f4117de746a785c14f8a2d383e532089": {
+      "workers": {
+        "app/page": {
+          "moduleId": 81553,
+          "async": false,
+          "exportedName": "completeBooking",
+          "filename": "app/actions/bookings.ts"
+        }
+      },
+      "exportedName": "completeBooking",
+      "filename": "app/actions/bookings.ts"
+    }
+  },
+  "edge": {}
+}
