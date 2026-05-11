@@ -23,16 +23,43 @@ export function ReservationForm() {
     },
   });
 
-  const today = new Date().toISOString().split("T")[0];
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [partySize, setPartySize] = useState(2);
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState("");
   const [time, setTime] = useState("12:00");
   const [purpose, setPurpose] = useState("");
   const [assignedTableId, setAssignedTableId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = new Date(e.target.value + "T00:00:00");
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    if (selected < todayStart) {
+      alert("過去日期不可選擇，請重新選擇");
+      setDate(today);
+      return;
+    }
+    setDate(e.target.value);
+  };
+
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (date === today) {
+      const [hour, min] = e.target.value.split(":").map(Number);
+      const now = new Date();
+      const [h, m] = [now.getHours(), now.getMinutes()];
+      if (hour * 60 + min < h * 60 + m) {
+        alert("過去時間不可選擇，請重新選擇");
+        setTime("");
+        return;
+      }
+    }
+    setTime(e.target.value);
+  };
 
   const selectedTable = tables.find((t: any) => t.id === assignedTableId);
 
@@ -100,7 +127,7 @@ export function ReservationForm() {
                 type="date"
                 value={date}
                 min={today}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={handleDateChange}
                 required
               />
             </div>
@@ -109,7 +136,7 @@ export function ReservationForm() {
               <Input
                 type="time"
                 value={time}
-                onChange={(e) => setTime(e.target.value)}
+                onChange={handleTimeChange}
                 required
               />
               {isPast && <p className="text-xs text-red-500 mt-1">時間已過</p>}
