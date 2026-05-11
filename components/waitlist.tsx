@@ -19,6 +19,16 @@ import {
 } from "@/components/ui/dialog";
 import { createBooking, assignTable, returnToWaitlist, completeBooking } from "@/app/actions/bookings";
 
+// Special marking types
+export type SpecialMark = "vip" | "pregnant" | "elderly" | "pet";
+
+export const SPECIAL_MARKS: { value: SpecialMark; label: string }[] = [
+  { value: "vip", label: "VIP" },
+  { value: "pregnant", label: "孕婦" },
+  { value: "elderly", label: "老者" },
+  { value: "pet", label: "寵物" },
+];
+
 export function Waitlist() {
   const supabase = createClient();
   const qc = useQueryClient();
@@ -74,6 +84,7 @@ export function Waitlist() {
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [partySize, setPartySize] = useState(2);
+  const [selectedMarks, setSelectedMarks] = useState<Set<SpecialMark>>(new Set());
 
   const handleAdd = async () => {
     const today = new Date().toISOString().split("T")[0];
@@ -89,6 +100,7 @@ export function Waitlist() {
     setCustomerName("");
     setPhone("");
     setPartySize(2);
+    setSelectedMarks(new Set());
   };
 
   const handleAssign = async () => {
@@ -109,6 +121,24 @@ export function Waitlist() {
   const openAssign = (booking: Booking) => {
     setAssignBooking(booking);
     setShowAssignDialog(true);
+  };
+
+  const toggleMark = (mark: SpecialMark) => {
+    const newMarks = new Set(selectedMarks);
+    if (newMarks.has(mark)) {
+      newMarks.delete(mark);
+    } else {
+      newMarks.add(mark);
+    }
+    setSelectedMarks(newMarks);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedMarks.size === SPECIAL_MARKS.length) {
+      setSelectedMarks(new Set());
+    } else {
+      setSelectedMarks(new Set(SPECIAL_MARKS.map((m) => m.value)));
+    }
   };
 
   return (
@@ -156,12 +186,12 @@ export function Waitlist() {
               <p className="text-sm text-muted-foreground">目前無已入座客人</p>
             ) : (
               seatedList.map((b) => (
-                <div key={b.id} className="flex items-center justify-between p-3 border rounded-lg bg-white">
-                  <div>
+                <div key={b.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg bg-white gap-3">
+                  <div className="flex-1 min-w-0">
                     <div className="font-medium">{b.customer_name}</div>
                     <div className="text-xs text-muted-foreground">{b.table?.name ?? "未分配"} · {b.party_size}人</div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-shrink-0">
                     <Button size="sm" variant="outline" onClick={() => returnToWaitlist(b.id)}>退回</Button>
                     <Button size="sm" variant="secondary" onClick={() => completeBooking(b.id)}>完成</Button>
                   </div>
@@ -190,6 +220,33 @@ export function Waitlist() {
             <div>
               <Label>人數</Label>
               <Input type="number" min={1} value={partySize} onChange={(e) => setPartySize(Number(e.target.value))} />
+            </div>
+            {/* Special marks section with proper flex layout */}
+            <div>
+              <Label className="mb-2 block">特殊標記</Label>
+              <div className="flex flex-wrap gap-2 items-center">
+                <button
+                  type="button"
+                  onClick={toggleSelectAll}
+                  className="text-xs px-2 py-1 border rounded hover:bg-gray-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                >
+                  + 全選
+                </button>
+                {SPECIAL_MARKS.map((mark) => (
+                  <label
+                    key={mark.value}
+                    className="flex items-center gap-1.5 px-2 py-1.5 border rounded cursor-pointer min-h-[44px] hover:bg-gray-50 select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedMarks.has(mark.value)}
+                      onChange={() => toggleMark(mark.value)}
+                      className="w-4 h-4 accent-current"
+                    />
+                    <span className="text-sm whitespace-nowrap">{mark.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>
