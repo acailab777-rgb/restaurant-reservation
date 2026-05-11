@@ -34,11 +34,23 @@ export function ReservationForm() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const isPast = date === today && time ? isPastDateTime(date, time) : false;
+  const selectedTable = tables.find((t: any) => t.id === assignedTableId);
+
+  const isPast = isPastDateTime(date, time);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isPast) return;
+
+    // Bug 2 (reservation): check table capacity before booking
+    if (assignedTableId) {
+      const table = tables.find((t: any) => t.id === assignedTableId);
+      if (table && table.capacity < partySize) {
+        alert(`此桌位容納人數為 ${table.capacity} 人，無法容納 ${partySize} 人。`);
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       await createBooking({
@@ -118,6 +130,9 @@ export function ReservationForm() {
                 </option>
               ))}
             </Select>
+            {assignedTableId && selectedTable && selectedTable.capacity < partySize && (
+                <p className="text-xs text-red-500 mt-1">容納人數不足（此桌 {selectedTable.capacity} 人）</p>
+              )}
           </div>
 
           <div>

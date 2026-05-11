@@ -81,22 +81,30 @@ export function TablePanel() {
   const [tableName, setTableName] = useState("");
   const [tableCapacity, setTableCapacity] = useState(2);
 
-  const handleAdd = async () => {
-    await createTable(tableName, tableCapacity);
-    setShowAddDialog(false);
-    setTableName("");
-    setTableCapacity(2);
+  // Bug 3: confirmation dialog state
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"create" | "update" | "delete" | null>(null);
+
+  const openConfirm = (action: "create" | "update" | "delete") => {
+    setConfirmAction(action);
+    setShowConfirmDialog(true);
   };
 
-  const handleEdit = async () => {
-    if (!editTable) return;
-    await updateTable(editTable.id, tableName, tableCapacity);
+  const handleConfirmExecute = async () => {
+    if (confirmAction === "delete" && editTable) {
+      await deleteTable(editTable.id);
+    } else if (confirmAction === "update" && editTable) {
+      await updateTable(editTable.id, tableName, tableCapacity);
+    } else if (confirmAction === "create") {
+      await createTable(tableName, tableCapacity);
+      setTableName("");
+      setTableCapacity(2);
+    }
+    setShowConfirmDialog(false);
+    setConfirmAction(null);
+    setShowAddDialog(false);
     setShowEditDialog(false);
     setEditTable(null);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (confirm("Delete this table?")) await deleteTable(id);
   };
 
   const openEdit = (t: Table) => {
@@ -158,7 +166,7 @@ export function TablePanel() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>取消</Button>
-            <Button onClick={handleAdd}>新增</Button>
+            <Button onClick={() => openConfirm("create")} disabled={!tableName}>確認新增</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -180,11 +188,35 @@ export function TablePanel() {
             </div>
           </div>
           <DialogFooter className="flex justify-between">
-            <Button variant="destructive" onClick={() => editTable && handleDelete(editTable.id)}>刪除</Button>
+            <Button variant="destructive" onClick={() => openConfirm("delete")}>刪除</Button>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowEditDialog(false)}>取消</Button>
-              <Button onClick={handleEdit}>儲存</Button>
+              <Button onClick={() => openConfirm("update")}>確認儲存</Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Confirm Change Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>確認變更</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            {confirmAction === "create" && (
+              <p>即將新增桌位：<strong>{tableName}</strong>（容納 {tableCapacity} 人）</p>
+            )}
+            {confirmAction === "update" && editTable && (
+              <p>即將更新桌位：<strong>{editTable.name}</strong> → <strong>{tableName}</strong><br/>
+              容納人數：{editTable.capacity} 人 → {tableCapacity} 人</p>
+            )}
+            {confirmAction === "delete" && editTable && (
+              <p className="text-red-600">即將刪除桌位：<strong>{editTable.name}</strong>（容納 {editTable.capacity} 人）</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>取消</Button>
+            <Button onClick={handleConfirmExecute}>確認</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

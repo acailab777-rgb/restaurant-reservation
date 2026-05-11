@@ -93,6 +93,13 @@ export function Waitlist() {
 
   const handleAssign = async () => {
     if (!assignBooking || !selectedTable) return;
+
+    const table = tables.find((t) => t.id === selectedTable);
+    if (table && assignBooking.party_size > table.capacity) {
+      alert(`此桌位容納人數為 ${table.capacity} 人，無法容納 ${assignBooking.party_size} 人。`);
+      return;
+    }
+
     await assignTable(assignBooking.id, selectedTable);
     setShowAssignDialog(false);
     setAssignBooking(null);
